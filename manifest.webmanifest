@@ -1,0 +1,16 @@
+{
+  "name": "Bullets & Funerals",
+  "short_name": "Bullets & Funerals",
+  "description": "Wildwest-Duell fürs Handy: Wer zieht schneller?",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1d0b3a",
+  "theme_color": "#1d0b3a",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,2176 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1d0b3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bullets &amp; Funerals">
+<title>Bullets &amp; Funerals – von Michi Zeindl</title>
+<meta name="description" content="Wildwest-Duell fürs Handy: Warte auf ZIEH! und tippe schneller als acht Banditen – oder als dein Gegenüber.">
+<!-- Vorschau beim Teilen (WhatsApp, Signal, Facebook …): Bildadresse muss vollständig sein -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="de_DE">
+<meta property="og:title" content="Bullets &amp; Funerals">
+<meta property="og:description" content="Wer zieht schneller? Ein Wildwest-Duell fürs Handy.">
+<meta property="og:url" content="https://michizeindl.github.io/bullets-and-funerals/">
+<meta property="og:image" content="https://michizeindl.github.io/bullets-and-funerals/assets/vorschau.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<!-- als App auf dem Startbildschirm -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preload" href="assets/rye.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* Western-Schrift „Rye“ (Sorkin Type, SIL Open Font License, siehe assets/rye-OFL.txt) –
+     liegt im Spiel selbst, damit beim Aufruf keine Verbindung zu Google entsteht */
+  @font-face { font-family: Rye; font-style: normal; font-weight: 400; font-display: swap; src: url(assets/rye.woff2) format('woff2'); }
+  :root {
+    --paper: #ecd9a8;
+    --paper-dark: #c9a86a;
+    --ink: #3a2414;
+    --red: #7a2e1a;
+    --cream: #fbe7c0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #1d0b3a;
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #safe {
+    position: fixed; top: 0; left: 0; visibility: hidden; pointer-events: none;
+    padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+  }
+  #ui {
+    position: fixed; inset: 0; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .icon {
+    position: fixed; top: calc(env(safe-area-inset-top) + 10px);
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(20, 8, 4, .55); color: var(--cream);
+    border: 1px solid rgba(251, 231, 192, .3);
+    font-size: 20px; line-height: 1; cursor: pointer; pointer-events: auto;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  #btnBack { left: calc(env(safe-area-inset-left) + 10px); }
+  #btnSound { right: calc(env(safe-area-inset-right) + 10px); }
+  /* Solo-Duell quer (Bild um 90° gedreht, Handy wird gedreht): Knöpfe an die neuen oberen Ecken, Symbole mitdrehen */
+  body.quer #btnBack { left: auto; right: calc(env(safe-area-inset-right) + 10px); transform: rotate(90deg); }
+  body.quer #btnSound { top: auto; bottom: calc(env(safe-area-inset-bottom) + 10px); transform: rotate(90deg); }
+  .hidden { display: none !important; }
+
+  .poster {
+    pointer-events: auto;
+    width: min(100%, 360px);
+    max-height: calc(100dvh - 32px); overflow-y: auto; overflow-x: hidden;
+    background:
+      radial-gradient(ellipse at center, rgba(255,255,255,.18), transparent 60%),
+      radial-gradient(ellipse at center, transparent 55%, rgba(90,58,30,.35) 100%),
+      var(--paper);
+    color: var(--ink);
+    border: 3px solid #5a3a1e;
+    border-radius: 4px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.55), inset 0 0 0 6px rgba(90,58,30,.15);
+    padding: 22px 22px 20px;
+    text-align: center;
+    transform: rotate(-1deg);
+    animation: drop .35s cubic-bezier(.2,1.4,.4,1);
+  }
+  @keyframes drop { from { transform: translateY(-30px) rotate(-4deg); opacity: 0; } }
+  .poster h1, .poster h2, .wanted-top, .reward { font-family: Rye, Georgia, serif; font-weight: normal; }
+  .poster h1 { margin: 4px 0 2px; font-size: 2.6rem; line-height: 1; color: #000; }
+  .poster h2 { margin: 6px 0 4px; font-size: 1.7rem; line-height: 1.1; }
+  .small { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+  .sub { margin: 4px 0 16px; font-style: italic; font-size: 1.1rem; }
+  .wanted-top { font-size: 3rem; line-height: 1; color: var(--red); letter-spacing: .04em; }
+  .reward { font-size: 1.5rem; color: var(--red); margin: 6px 0; }
+  .poster p { margin: 6px 0; line-height: 1.45; }
+  .nowrap { white-space: nowrap; }
+  /* Name auf dem Steckbrief: Goldgelb mit dunklem Rand */
+  #wName { color: #e8b322; text-shadow: 1px 0 0 #3a2414, -1px 0 0 #3a2414, 0 1px 0 #3a2414, 0 -1px 0 #3a2414, 1px 1px 0 #3a2414, -1px -1px 0 #3a2414, 1px -1px 0 #3a2414, -1px 1px 0 #3a2414, 0 3px 4px rgba(58,36,20,.35); }
+  /* dezenter Trennstrich über die ganze Plakatbreite (gleicht den Innenabstand aus) */
+  .divider { border: 0; border-top: 1px solid rgba(58,36,20,.28); margin: 12px -22px 10px; }
+  .label { font-size: .95rem; margin: 10px 0 -4px; }   /* Beschriftung wie „Du bist:“ */
+  /* kleine Handys hochkant (z. B. iPhone SE): Menü etwas kompakter */
+  @media (max-height: 740px) and (orientation: portrait) {
+    #menu { padding-top: 10px; padding-bottom: 10px; }
+    #menu h1 { font-size: 2.3rem; }
+    #menu .sub { margin-bottom: 8px; }
+    #menu .divider { margin: 8px -22px 6px; }
+    #menu button[data-act] { padding-top: 11px; padding-bottom: 11px; margin-top: 8px; }
+    #menu .rules { margin-top: 8px; }
+    #menu .records { margin-top: 8px; }
+  }
+  .rules { font-size: .92rem; margin-top: 14px; line-height: 1.45; text-wrap: balance; }
+  /* Rekorde im Menü: eigener Kasten mit drei Feldern (Bezeichnung klein, Wert groß) */
+  .records { display: flex; margin-top: 12px; border: 2px solid rgba(110,78,18,.6); border-radius: 6px; background: rgba(196,156,48,.5); }   /* schmutziges Gelb */
+  /* „Auf 0 setzen“ unter den Rekorden: klein und unauffällig wie ein Link */
+  .poster button.reset {
+    display: inline-block; width: auto; margin: 6px 0 0; padding: 2px 6px;
+    background: none; color: var(--ink); box-shadow: none; border: 0;
+    font-family: Georgia, serif; font-size: .78rem; text-decoration: underline; opacity: .7;
+  }
+  .poster button.reset.confirm { color: var(--red); opacity: 1; font-weight: bold; }
+  /* Einschusslöcher im Menü-Plakat: links eins, rechts zwei (dunkles Loch, aufgerissener Papierrand, Risse, Brandschatten) */
+  #menu { position: relative; }
+  .hole {
+    position: absolute; width: 34px; height: 34px; pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3CradialGradient id='b'%3E%3Cstop offset='0' stop-color='%233a2414' stop-opacity='.55'/%3E%3Cstop offset='.55' stop-color='%235a3a1e' stop-opacity='.22'/%3E%3Cstop offset='1' stop-color='%235a3a1e' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='20' cy='20' r='19' fill='url(%23b)'/%3E%3Cg stroke='%233a2414' stroke-width='.7' stroke-linecap='round' opacity='.7' fill='none'%3E%3Cpath d='M20 20 L34 14 M20 20 L29 32 M20 20 L7 27 M20 20 L11 8 M20 20 L24 4'/%3E%3C/g%3E%3Cpath d='M20 11.5 L23.5 13.5 L27.5 14.5 L26.5 19 L28.5 23.5 L24.5 25.5 L22 28.5 L18 26.5 L13.5 27.5 L13 23 L10.5 19 L13.5 15.5 L16 11.5 Z' fill='%23f3e2b8'/%3E%3Cpath d='M20 14 L22.5 16 L25 17 L24 20 L25.5 23 L22.5 24 L20.5 26 L18 24.5 L15 25 L15 22 L13.5 19.5 L16 17 L17.5 14.5 Z' fill='%23140a05'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  .hole-l  { left: 24px;  top: 42px; transform: rotate(-20deg); }
+  @media (max-width: 350px) { .hole-l { left: 10px; } }   /* sehr schmale Handys: nicht ins „F“ ragen */
+  .hole-r1 { right: 14px; top: 12px; width: 28px; height: 28px; transform: rotate(35deg); }
+  .hole-r2 { right: 18px; top: 50px; width: 38px; height: 38px; transform: rotate(110deg); }
+  /* Menü: oben und unten wenig Rand */
+  #menu { padding-top: 12px; padding-bottom: 12px; }
+  #menu h1 { margin-top: 0; }
+  .records:empty { display: none; }
+  .rec { flex: 1; padding: 5px 4px 4px; display: flex; flex-direction: column; justify-content: space-between; }
+  .rec + .rec { border-left: 1px dashed rgba(58,36,20,.4); }
+  .rec small { display: block; font-size: .6rem; letter-spacing: .03em; white-space: nowrap; text-transform: uppercase; opacity: .75; }
+  .rec b { font-family: Rye, Georgia, serif; font-weight: normal; font-size: 1.05rem; }
+  .stats { font-size: .95rem; margin: 10px 0 4px; line-height: 1.5; }
+  #portrait {
+    width: 200px; height: 150px; display: block; margin: 10px auto 4px;
+    border: 3px solid #5a3a1e; background: var(--paper-dark);
+  }
+  .poster button {
+    display: block; width: 100%;
+    font-family: Rye, Georgia, serif; font-size: 1.15rem;
+    background: var(--red); color: var(--cream);
+    border: 0; border-radius: 6px; padding: 14px 12px; margin-top: 10px;
+    cursor: pointer; box-shadow: 0 3px 0 #4a1a0e;
+  }
+  .poster button:active { transform: translateY(2px); box-shadow: 0 1px 0 #4a1a0e; }
+  /* Menü-Knöpfe immer einzeilig, auf sehr schmalen Handys etwas kleinere Schrift */
+  #menu button[data-act] { font-size: min(1.15rem, 5vw); white-space: nowrap; }
+  .poster button.ghost {
+    background: transparent; color: var(--ink); box-shadow: none;
+    border: 2px solid rgba(58,36,20,.45); font-size: 1rem; padding: 10px;
+  }
+  /* Kontostand nach einem Sieg: zählt vom alten auf den neuen Betrag hoch */
+  .purse { margin: 12px 0 6px; padding: 8px 0 6px; border-top: 2px dashed rgba(58,36,20,.35); border-bottom: 2px dashed rgba(58,36,20,.35); }
+  .purse-sum { display: inline-block; font-family: Rye, Georgia, serif; font-size: 2.3rem; line-height: 1.1; color: #3d6b22; }
+  .purse-sum.pop { animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
+  .purse-add { font-family: Rye, Georgia, serif; font-size: 1.05rem; color: #3d6b22; opacity: 0; transform: translateY(6px); transition: opacity .3s, transform .3s; }
+  .purse-add.show { opacity: 1; transform: none; }
+  @keyframes pop { 50% { transform: scale(1.18); } }
+  /* Handy quer: wenig Höhe, Plakate etwas kompakter */
+  @media (max-height: 480px) {
+    .poster { padding: 12px 18px 12px; }
+    .poster h2 { font-size: 1.4rem; margin: 2px 0; }
+    .poster p { margin: 3px 0; }
+    .poster button { padding: 10px 12px; margin-top: 7px; }
+    .stats { margin: 4px 0 2px; }
+    .purse { margin: 6px 0 4px; padding: 3px 0; }
+    .purse-sum { font-size: 1.8rem; }
+  }
+  /* Handy quer: breiter statt höher – Titel einzeilig, Figurwahl neben der Beschriftung */
+  @media (max-height: 480px) and (orientation: landscape) {
+    .poster { width: min(100%, 480px); }
+    .poster h1 { font-size: 1.95rem; }
+    .poster h1 br { display: none; }
+    .poster .sub { margin: 2px 0 6px; font-size: 1rem; line-height: 1.15; }
+    #menu button[data-act] { padding-top: 8px; padding-bottom: 8px; }
+    .divider { margin: 6px -18px 5px; }
+    .label { margin: 0 0 -5px; }
+    /* Menü quer: links Titel und Figurwahl, rechts Spielart, Regel und Rekorde */
+    #menu { width: min(100%, 680px); display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; align-items: center; }
+    #menu .col { display: block; }
+    #menu h1 br { display: inline; }
+    #menu .divider { margin: 8px 0; }
+    #menu .divider-top { display: none; }
+    /* Einschusslöcher quer: rechts neben dem Titel in der linken Spalte, nicht auf den Knöpfen */
+    .hole-r1 { right: auto; left: calc(50% - 52px); top: 22px; }
+    .hole-r2 { right: auto; left: calc(50% - 40px); top: 66px; }   /* quer steht „Du spielst:“ oben in der rechten Spalte */
+    .pick .who { flex-basis: auto; }
+    .pick { margin: 2px 0 4px; }
+    .poster h1 { margin: 0; }
+    .rules { margin-top: 4px; font-size: .85rem; }
+    .records { margin-top: 4px; }
+    /* Steckbrief quer: Bild links, Text rechts */
+    #wanted { width: min(100%, 560px); display: grid; grid-template-columns: auto 1fr; column-gap: 16px; align-items: center; }
+    #wanted > * { grid-column: 2; }
+    #wanted #portrait { grid-column: 1; grid-row: 1 / span 9; margin: 0; }
+    #wanted .divider { margin: 4px -18px 4px -16px; }   /* vom Bild bis zum Plakatrand durchgezogen */
+    .wanted-top { font-size: 2.4rem; }
+    /* 2 Spieler quer: Erklärung links, Figurwahl und Start rechts */
+    #duoIntro { width: min(100%, 680px); display: grid; grid-template-columns: 1fr 1.4fr; column-gap: 18px; align-items: center; }
+    #duoIntro .col { display: block; }
+    #duoIntro .divider { margin: 6px 0; }
+    #duoIntro .divider-top { display: none; }
+    .poster { padding: 10px 18px 10px; }
+    .poster .pick button { padding: 5px 4px; }
+  }
+  /* Spalten nur im Querformat; sonst stehen die Inhalte einfach untereinander */
+  .col { display: contents; }
+  /* Figurwahl: Mann oder Frau */
+  .pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 8px; }
+  .pick .who { flex-basis: 100%; font-size: .95rem; }
+  .poster .pick button {
+    display: inline-block; flex: 1 1 0; width: auto; margin: 0;
+    font-size: .9rem; padding: 7px 4px;
+    background: transparent; color: var(--ink); box-shadow: none;
+    border: 2px solid rgba(58,36,20,.45);
+  }
+  .poster .pick button.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .poster .pick4 button { flex: 1 1 40%; }   /* vier Figuren, zwei pro Zeile */
+  .poster .pick button:disabled { opacity: .3; cursor: default; }   /* schon vom anderen Platz gewählt */
+  .pick .nm { display: block; margin-top: 2px; font-family: Georgia, serif; font-style: italic; font-size: .8rem; opacity: .85; }
+  .poster .pick button:active { transform: translateY(1px); }
+  /* Handy quer (steht bewusst nach den Grundregeln): alle vier Figuren nebeneinander, nur die Namen */
+  @media (max-height: 480px) and (orientation: landscape) {
+    .pick4 .who { flex-basis: 100%; }
+    .poster .pick4 button { flex: 1 1 0; font-size: .85rem; padding: 6px 2px; }
+    .pick4 .nm { display: none; }
+  }
+
+  /* Sanfte Animationen für alle Knöpfe: anheben beim Darüberfahren (nur mit Maus), nachgeben beim Drücken */
+  .poster button, .icon {
+    transition: transform .18s ease, box-shadow .18s ease, background-color .2s ease, color .2s ease,
+                border-color .2s ease, filter .18s ease, opacity .2s ease;
+  }
+  @media (hover: hover) {
+    .poster button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 0 #4a1a0e, 0 8px 14px rgba(0,0,0,.18); filter: brightness(1.08); }
+    .poster .pick button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(58,36,20,.22); border-color: var(--ink); filter: none; }
+    .poster button.ghost:hover { box-shadow: 0 3px 8px rgba(58,36,20,.18); border-color: rgba(58,36,20,.7); filter: none; }
+    .poster button.reset:hover { transform: none; box-shadow: none; filter: none; opacity: 1; }
+    .icon:hover { transform: scale(1.08); background: rgba(20,8,4,.75); }
+  }
+  .poster button:active:not(:disabled) { transition-duration: .06s; }
+  .poster button.reset:active { transform: none; box-shadow: none; }
+  .icon:active { transform: scale(.92); transition-duration: .06s; }
+  .poster .pick button.on { animation: pickPop .28s ease; }   /* gewählte Figur ploppt kurz auf */
+  @keyframes pickPop { 50% { transform: scale(1.06); } }
+  /* Spielregel im Menü: gleitet herein, „ZIEH!“ zuckt regelmäßig auf wie ein Schuss */
+  #menu .rules { animation: rulesIn .6s .25s ease-out both; }
+  @keyframes rulesIn { from { opacity: 0; transform: translateY(8px); } }
+  .zieh { display: inline-block; color: var(--red); animation: zieh 2.6s ease-in-out infinite; }
+  @keyframes zieh {
+    0%, 70%, 100% { transform: none; text-shadow: none; }
+    74% { transform: scale(1.32) rotate(-4deg); text-shadow: 0 0 8px rgba(255,190,60,.9); }
+    80% { transform: scale(.96) rotate(1deg); }
+    86% { transform: scale(1.12) rotate(-1deg); text-shadow: 0 0 4px rgba(255,190,60,.5); }
+    92% { transform: scale(1); }
+  }
+  /* Urheberhinweis klein und mittig am unteren Rand (nur bei Menü und Plakaten, nicht im Duell) */
+  #copy {
+    position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 3px);
+    text-align: center; font-size: 10px; letter-spacing: .03em; color: rgba(251,231,192,.75);
+    text-shadow: 0 1px 2px rgba(0,0,0,.8); pointer-events: none; z-index: 5;
+  }
+  /* Ladehinweis unten, solange gemalte Figuren noch fehlen (online beim ersten Aufruf) */
+  #loading {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 22px); transform: translateX(-50%);
+    z-index: 30; pointer-events: none; white-space: nowrap;
+    font-family: Rye, Georgia, serif; font-size: .95rem; color: #fbe7c0;
+    background: rgba(25,10,5,.72); border: 1px solid rgba(251,231,192,.35); border-radius: 999px; padding: 6px 16px;
+    opacity: 0; transition: opacity .4s;
+  }
+  #loading.on { opacity: 1; animation: ladepuls 1.6s ease-in-out infinite; }
+  @keyframes ladepuls { 50% { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) {
+    .poster button, .icon, #menu .rules, .zieh { transition: none; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="copy">©&nbsp;Michael Zeindl</div>
+<div id="loading" aria-live="polite">Die Revolverhelden satteln auf …</div>
+<div id="safe"></div>
+
+<button id="btnBack" class="icon hidden" aria-label="Zum Menü">✕</button>
+<button id="btnSound" class="icon" aria-label="Ton an oder aus">🔊</button>
+
+<div id="ui">
+  <section id="menu" class="poster">
+    <span class="hole hole-l" aria-hidden="true"></span>
+    <span class="hole hole-r1" aria-hidden="true"></span>
+    <span class="hole hole-r2" aria-hidden="true"></span>
+    <div class="col">
+      <h1>Bullets &amp; <br>Funerals</h1>
+      <p class="sub"><span class="nowrap">Wer zieht schneller?</span></p>
+      <hr class="divider">
+      <div class="pick pick4" data-seat="0"><span class="who">Du bist:</span></div>
+    </div>
+    <div class="col">
+      <hr class="divider divider-top">
+      <div class="label">Du spielst:</div>
+      <button data-act="solo">Gegen die Banditen</button>
+      <button data-act="duo">Zwei Spieler – ein Handy</button>
+      <hr class="divider">
+      <div class="rules"><b>Best-of-Three!</b> Warte, bis der Hund bellt und <b class="zieh">ZIEH!</b> erscheint, dann tippe so schnell du kannst. Wer zu früh zieht, verliert die Runde und die Katze miaut.</div>
+      <div id="records" class="records"></div>
+      <button id="btnReset" class="reset hidden">Auf 0 setzen</button>
+    </div>
+  </section>
+
+  <section id="wanted" class="poster hidden">
+    <div class="wanted-top">GESUCHT</div>
+    <div class="small">tot oder leblos</div>
+    <canvas id="portrait"></canvas>
+    <h2 id="wName"></h2>
+    <p id="wDesc"></p>
+    <hr class="divider">
+    <div class="reward" id="wReward"></div>
+    <div class="small" id="wStep"></div>
+    <button data-act="fight">Duell annehmen</button>
+  </section>
+
+  <section id="duoIntro" class="poster hidden">
+    <div class="col">
+      <h2>2 Spieler</h2>
+      <p>Legt das Handy flach zwischen euch.<br>Wer unten sitzt, tippt auf die untere Hälfte, wer oben sitzt, auf die obere.</p>
+    </div>
+    <div class="col">
+      <hr class="divider divider-top">
+      <div class="pick pick4" data-seat="0"><b class="who">Unten:</b></div>
+      <hr class="divider">
+      <div class="pick pick4" data-seat="1"><b class="who">Oben:</b></div>
+      <hr class="divider">
+      <p>Wer zuerst zwei Runden gewinnt, bleibt stehen.</p>
+      <button data-act="duoGo">Duell annehmen</button>
+    </div>
+  </section>
+
+  <section id="result" class="poster hidden">
+    <div class="small" id="rKicker"></div>
+    <h2 id="rTitle"></h2>
+    <p id="rText"></p>
+    <div id="rPurse" class="purse hidden">
+      <div class="small">Kontostand</div>
+      <div class="purse-add" id="rPurseAdd"></div>
+      <div class="purse-sum" id="rPurseSum"></div>
+    </div>
+    <div class="stats" id="rStats"></div>
+    <button id="rMain"></button>
+    <button class="ghost" data-act="menu">Zum Menü</button>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Hilfsfunktionen ----------
+const $ = s => document.querySelector(s);
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const money = n => `$${n.toLocaleString('de-DE')}`;
+const FONT = 'Rye, Georgia, serif';
+const SIL = '#1c0f0a';
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('duell.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('duell.' + k, JSON.stringify(v)); } catch (e) {} }
+};
+
+// look.h = Größe der Figur (1 = normal), gemessen vom Stiefel bis zur Hut- bzw. Kopfspitze
+// react = Reaktion in ms (Grundwert), range = eigener Bereich [min, max] statt Zufallsfaktor, foul = Frühstart-Chance
+const OPPONENTS = [
+  { name: 'Lazy Larry',    desc: 'Zieht nur, wenn er muss. Meistens muss er nicht.',          react: 720, foul: 0.18, reward: 25,   accent: '#c9a227', hat: 1.2, look: { h: 1.0, sprite: 'lazy-larry' } },
+  { name: 'Clumsy Clyde',  desc: 'Hat sich schon dreimal selbst in den Stiefel geschossen.',  react: 650, foul: 0.15, reward: 50,   accent: '#9b6bd1', hat: 0.9, look: { h: 1.08, sprite: 'clumsy-clyde' } },
+  { name: 'Bacon Bob',     desc: 'Riecht nach Räucherschinken und ist genauso zäh.',          react: 590, foul: 0.10, reward: 100,  accent: '#e88aa0', hat: 1.0,
+    look: { w: 1.12, h: 0.88, hat: 'bowler', belly: true, mustache: true, ham: true, sprite: 'bacon-bob' } },
+  { name: 'Greasy Gus',    desc: 'Seine Finger sind fettig. Sein Abzug nicht.',               react: 530, foul: 0.08, reward: 250,  accent: '#6b8e23', hat: 1.1, look: { h: 0.84, sprite: 'greasy-gus' } },
+  { name: 'Crazy Cora',    desc: 'Niemand weiß, wann sie zieht. Sie selbst auch nicht.',      react: 458, range: [350, 566], foul: 0.2, reward: 500,  accent: '#e05cc0', hat: 0.95, look: { h: 0.97, sprite: 'crazy-cora' } },
+  { name: "Smokin' Sally", desc: 'Ihr Colt raucht schon, bevor du ihn siehst.',               react: 430, foul: 0.04, reward: 1000, accent: '#b8b8b8', hat: 1.05, look: { h: 0.915, sprite: 'smokin-sally' } },
+  { name: 'Terrible Ted',  desc: 'Hat weder ein Duell verloren, noch gelächelt.', react: 315, range: [285, 345], foul: 0.04, reward: 2500, accent: '#1f3a6b', hat: 1.25, voice: 'husten', look: { h: 1.18, sprite: 'terrible-ted' } },
+  { name: 'Killer Kate',   desc: 'Die Letzte, die du je sehen wirst.',                        react: 245, range: [220, 270], foul: 0,    reward: 5000, accent: '#9e1b2a', hat: 1.0, voice: 'schrei',
+    look: { w: 0.95, h: 1.04, hat: 'flat', hair: true, poncho: true, mask: true, sprite: 'killer-kate' } },
+];
+// Die vier Spielerfiguren: zwei Farben (Gelb, Grün), je Revolverheldin und Revolverheld.
+// Bilder: assets/spieler-gelb-mann.webp, spieler-gelb-frau.webp, spieler-gruen-mann.webp, spieler-gruen-frau.webp
+const PLAYERS = [
+  { key: 'gelb',  accent: '#e0b21c', ui: '#ffd84a', rgb: '224,178,28', names: { frau: 'Sunny Sue', mann: 'Yellow Yale' }, h: { frau: 0.97, mann: 1.04 } },
+  { key: 'gruen', accent: '#2e9e48', ui: '#74e08a', rgb: '46,158,72',  names: { frau: 'Minty Molly', mann: 'Clover Clint' }, h: { frau: 0.89, mann: 1.01 } },
+];
+const FIGS = ['mann', 'frau'];
+const playerSprite = (c, f) => `spieler-${PLAYERS[c].key}-${f}`;
+// Zwei Plätze: 0 = unten/links (auch gegen die Banditen), 1 = oben/rechts (2 Spieler).
+// Jeder Platz wählt eine der vier Figuren (z. B. 'gruen-frau' = Minty Molly), nie beide dieselbe.
+const ALL_FIGS = PLAYERS.flatMap(p => ['frau', 'mann'].map(f => `${p.key}-${f}`));   // Revolverheldin zuerst
+const parseFig = k => { const [key, f] = String(k).split('-'); const c = PLAYERS.findIndex(p => p.key === key); return c >= 0 && FIGS.includes(f) ? { c, f } : null; };
+const seatKeys = [store.get('sitz0', 'gelb-mann'), store.get('sitz1', 'gruen-mann')].map((k, i) => parseFig(k) ? k : ['gelb-mann', 'gruen-mann'][i]);
+if (seatKeys[0] === seatKeys[1]) seatKeys[1] = ALL_FIGS.find(k => k !== seatKeys[0]);
+const seat = i => parseFig(seatKeys[i]);
+const seatName = i => { const s = seat(i); return PLAYERS[s.c].names[s.f]; };
+const seatColor = i => PLAYERS[seat(i).c];
+function seatCowboy(i) {
+  const { c, f } = seat(i), frau = f === 'frau';
+  return newCowboy(i ? -1 : 1, PLAYERS[c].accent, 1, { sprite: playerSprite(c, f), hair: frau, w: frau ? 0.94 : 1, h: PLAYERS[c].h[f] });
+}
+function setSeat(i, key) {
+  seatKeys[i] = key;
+  if (seatKeys[1 - i] === key) seatKeys[1 - i] = ALL_FIGS.find(k => k !== key);   // nie zweimal dieselbe Figur
+  seatKeys.forEach((k, j) => store.set('sitz' + j, k));
+}
+
+// ---------- Klang (nur Aufnahmen aus assets/*.mp3, siehe loadClip; dazu ein Schluchten-Echo) ----------
+const Snd = {
+  ac: null, out: null, echoIn: null, wind: null,
+  on: store.get('sound', true),
+  init() {
+    if (this.ac) { if (this.ac.state === 'suspended') this.ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ac = this.ac = new AC();
+    this.out = ac.createGain();
+    this.out.gain.value = this.on ? 0.9 : 0;
+    this.out.connect(ac.destination);
+    // Echo wie in einer Schlucht
+    const d = ac.createDelay(1); d.delayTime.value = 0.32;
+    const fb = ac.createGain(); fb.gain.value = 0.35;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+    this.echoIn = ac.createGain(); this.echoIn.gain.value = 0.5;
+    this.echoIn.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(this.out);
+    this.decodeClips();
+  },
+  set(on) {
+    this.on = on; store.set('sound', on);
+    if (this.out) this.out.gain.setTargetAtTime(on ? 0.9 : 0, this.ac.currentTime, 0.03);
+  },
+  // Schuss: Aufnahme assets/schuss.mp3 mit Schluchten-Echo
+  shot() { this.clip('schuss', 0.35); },
+  // Aufnahmen aus assets/: Glocke bei „ZIEH!“, Hahn spannen bei „Bereit …“, Frühstart, Aufprall im Staub
+  bell() { this.clip('zieh', 0.3); },
+  cock() { this.clip('hahn', 0); },
+  buzz() { this.clip('foul', 0); },
+  thud() { this.clip('aufprall', 0.15); },
+  // leises Klicken beim Hochzählen des Kontostands (Aufnahme, nur der erste kurze Klick)
+  tick() { this.clip('klick', 0); },
+  // Registrierkasse am Ende des Hochzählens (Aufnahme)
+  kaching() { this.clip('kasse', 0); },
+  // Aufnahmen: beim Start laden, dekodieren, sobald es Ton gibt.
+  // level = gewünschte Lautstärke (Effektivwert) nach dem Angleichen, maxDur = höchstens so viele Sekunden abspielen
+  clipData: {}, clips: {}, clipLevels: {}, clipMax: {}, clipFailed: {},
+  loadClip(name, level = this.clipLevel, maxDur = Infinity) {
+    this.clipLevels[name] = level; this.clipMax[name] = maxDur;
+    const fail = () => { this.clipFailed[name] = true; this.clipReady(name); };
+    fetch(`assets/${name}.mp3`).then(r => r.ok ? r.arrayBuffer() : null)
+      .then(ab => { if (ab) { this.clipData[name] = ab; this.decodeClips(); } else fail(); }).catch(fail);
+  },
+  decodeClips() {
+    if (!this.ac) return;
+    for (const [name, ab] of Object.entries(this.clipData)) {
+      delete this.clipData[name];
+      this.ac.decodeAudioData(ab)
+        .then(buf => { this.clips[name] = this.trimClip(buf, this.clipLevels[name], this.clipMax[name]); this.clipReady(name); })
+        .catch(() => { this.clipFailed[name] = true; this.clipReady(name); });
+    }
+  },
+  // Stille am Anfang und Ende abschneiden, Lautstärke auf einen einheitlichen Pegel bringen
+  clipLevel: 0.11,
+  trimClip(buf, level = this.clipLevel, maxDur = Infinity) {
+    const d = buf.getChannelData(0), sr = buf.sampleRate;
+    let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    const th = peak * 0.02;
+    let s = 0, e = d.length - 1;
+    while (s < e && Math.abs(d[s]) < th) s++;
+    e = Math.min(e, s + Math.round(maxDur * sr));   // höchstens maxDur Sekunden – Lautstärke nur über diesen Teil
+    while (e > s && Math.abs(d[e]) < th) e--;
+    let q = 0; for (let i = s; i <= e; i++) q += d[i] * d[i];
+    const rms = Math.sqrt(q / Math.max(1, e - s + 1));
+    return { buf, start: Math.max(0, s / sr - 0.02), dur: (e - s) / sr + 0.06, gain: level / Math.max(rms, 1e-4) };
+  },
+  clip(name, echo = 0.3) {
+    const c = this.clips[name];
+    if (!this.ac || !c) return null;
+    const ac = this.ac, src = ac.createBufferSource(), g = ac.createGain();
+    src.buffer = c.buf; g.gain.value = c.gain;
+    src.connect(g); g.connect(this.out);
+    if (echo) { const e = ac.createGain(); e.gain.value = echo; g.connect(e); e.connect(this.echoIn); }
+    const t = ac.currentTime + 0.02;
+    // die letzten 60 ms ausblenden, damit gekürzte Aufnahmen nicht knacken
+    g.gain.setValueAtTime(c.gain, t + Math.max(0, c.dur - 0.06));
+    g.gain.linearRampToValueAtTime(0, t + c.dur);
+    src.start(t, c.start, c.dur);
+    return { src, g };
+  },
+  // Schrei bzw. Husten eines Banditen beim „ZIEH!“; wird er zuerst getroffen, verstummt er sofort
+  voice: null,
+  sayStart(name) { this.voice = this.clip(name, 0.15); },
+  sayStop() {
+    if (!this.voice || !this.ac) return;
+    const { src, g } = this.voice, t = this.ac.currentTime;
+    g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.05);
+    try { src.stop(t + 0.06); } catch (e) {}
+    this.voice = null;
+  },
+  // Startmelodie: Aufnahme assets/startmelodie.mp3 (Pixabay, „Buckeye Burnout“ von kaazoom).
+  // Ist sie beim ersten Tippen noch nicht dekodiert, startet sie, sobald sie bereit ist (höchstens 15 s später, online über langsames Netz; beginnt vorher ein Duell, entfällt sie);
+  // lädt sie gar nicht, bleibt es still.
+  western() {
+    if (!this.ac) return;
+    if (this.clips.startmelodie) this.music = this.clip('startmelodie', 0);
+    else if (!this.clipFailed.startmelodie) this.musicPending = this.ac.currentTime;
+  },
+  clipReady(name) {
+    if (name !== 'startmelodie' || this.musicPending == null || !this.ac) return;
+    const late = this.ac.currentTime - this.musicPending;
+    this.musicPending = null;
+    if (late <= 15 && this.clips.startmelodie) this.music = this.clip('startmelodie', 0);
+  },
+  // Melodie sanft ausblenden (z. B. wenn ein Duell beginnt)
+  stopMusic() {
+    this.musicPending = null;
+    if (!this.music || !this.ac) return;
+    const { src, g } = this.music, t = this.ac.currentTime;
+    g.gain.setTargetAtTime(0, t, 0.25);
+    src.stop(t + 1.5);
+    this.music = null;
+  },
+  // Wüstenwind während des Duells: Aufnahme assets/wind.mp3 in Endlosschleife, sanft ein- und ausgeblendet
+  windStart() {
+    const c = this.clips.wind;
+    if (!this.ac || this.wind || !c) return;
+    const ac = this.ac, t = ac.currentTime;
+    const n = ac.createBufferSource(); n.buffer = c.buf; n.loop = true;
+    const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(c.gain, t + 1.5);
+    n.connect(g); g.connect(this.out);
+    n.start(t, Math.random() * c.buf.duration);   // jedes Duell an einer anderen Stelle beginnen
+    this.wind = { n, g };
+  },
+  windStop() {
+    if (!this.wind) return;
+    const { n, g } = this.wind, t = this.ac.currentTime;
+    g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.linearRampToValueAtTime(0, t + 0.6);
+    n.stop(t + 0.7);
+    this.wind = null;
+  },
+};
+
+// ---------- Leinwand & Layout ----------
+const cvs = $('#game'), ctx = cvs.getContext('2d');
+let W = 0, H = 0, DPR = 1, safeTop = 0, safeBottom = 0;
+let L = {};
+// Querformat im Duell: Hält man das Handy hochkant, zeichnet das Spiel die Duell-Szene um 90° gedreht im Querformat.
+// TURN = 0 normal, 1 = Solo (alles gedreht, Handy gegen den Uhrzeigersinn drehen),
+// -1 = 2 Spieler (nur die Szene gedreht, jede Figur auf der Seite ihres Spielers; Texte und Tippzonen wie gehabt).
+// SCENE = Maße/Layout der Szene, VIEW = Maße/Layout des Bildschirms (für Texte und Tippzonen im 2-Spieler-Modus).
+let TURN = 0, SCENE = null, VIEW = null;
+
+const GALLERY = location.hash === '#galerie';
+// Gemalter Hintergrund (assets/hintergrund.webp); horizon = Höhe des Horizonts im Bild (0..1)
+const BG = { img: null, horizon: 0.532, rect: null };
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 3);
+  const vw = window.innerWidth, vh = window.innerHeight;
+  cvs.width = Math.round(vw * DPR); cvs.height = Math.round(vh * DPR);
+  const cs = getComputedStyle($('#safe'));
+  safeTop = parseFloat(cs.paddingTop) || 0;
+  safeBottom = parseFloat(cs.paddingBottom) || 0;
+  VIEW = layout(vw, vh);
+  SCENE = TURN ? layout(vh, vw) : VIEW;
+  useSpace(SCENE);
+  document.body.classList.toggle('quer', TURN === 1);
+}
+// Maße und Layout für eine Fläche w × h berechnen
+function layout(w, h) {
+  W = w; H = h;
+  const portrait = H > W;
+  const fig = portrait ? Math.min(W * 0.38, H * 0.22) : Math.min(H * 0.36, W * 0.16);
+  const horizon = portrait ? H * 0.56 : H * 0.62;
+  L = {
+    portrait, fig, horizon,
+    feet: horizon + fig * (portrait ? 0.35 : 0.3),
+    x: [W * (portrait ? 0.2 : 0.25), W * (portrait ? 0.8 : 0.75)],
+    bannerY: portrait ? H * 0.27 : H * 0.24,
+  };
+  // Galerie (index.html#galerie): zwei Figuren gross im Bild
+  if (GALLERY) Object.assign(L, { fig: Math.min(H * 0.62, W * 0.3), horizon: H * 0.55, feet: H * 0.92, x: [W * 0.28, W * 0.72] });
+  // Bild füllt den Schirm, Sonne bleibt mittig, Horizont möglichst an der gewünschten Höhe
+  BG.rect = null;
+  if (BG.img) {
+    const im = BG.img, sc = Math.max(W / im.width, H / im.height), dw = im.width * sc, dh = im.height * sc;
+    let dy = L.horizon - BG.horizon * dh;
+    dy = Math.min(0, Math.max(H - dh, dy));
+    BG.rect = [(W - dw) / 2, dy, dw, dh];
+    L.horizon = dy + BG.horizon * dh;
+    if (!GALLERY) L.feet = L.horizon + L.fig * (portrait ? 0.35 : 0.3);
+  }
+  return { W, H, L, bg: BG.rect };
+}
+function useSpace(sp) { W = sp.W; H = sp.H; L = sp.L; BG.rect = sp.bg; }
+// Zeichenrichtung für die Szene (Solo: im Uhrzeigersinn, 2 Spieler: gegen den Uhrzeigersinn)
+function sceneTransform() {
+  if (TURN === 1) ctx.setTransform(0, DPR, -DPR, 0, VIEW.W * DPR, 0);
+  else if (TURN === -1) ctx.setTransform(0, -DPR, DPR, 0, 0, VIEW.H * DPR);
+  else ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+// Gedreht wird nur im laufenden Duell (kein Plakat offen) und nur, wenn der Bildschirm hochkant steht
+function turnWanted() {
+  if (GALLERY || !G.mode || !['ready', 'wait', 'draw', 'result', 'over', 'paused'].includes(G.state)) return 0;
+  if (window.innerWidth >= window.innerHeight) return 0;
+  if (PANELS.some(id => !$('#' + id).classList.contains('hidden'))) return 0;
+  return G.mode === 'solo' ? 1 : -1;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---------- Kulisse ----------
+const RIM = '#ffae5c';
+const FAR_MESAS  = [[-0.1, 0.2, 0.8], [0.68, 0.84, 0.55], [0.82, 1.12, 0.95]];
+const NEAR_MESAS = [[0.05, 0.3, 0.4], [0.74, 1.1, 0.3]];
+const CACTI = [
+  { x: 0.33, mid: true, k: 0.35 }, { x: 0.64, mid: true, k: 0.28 },
+  { x: 0.03, mid: false, k: 0.8 }, { x: 0.97, mid: false, k: 0.65 },
+];
+const CLOUDS = [
+  { x: 0.12, y: 0.16, w: 0.34, h: 0.016, v: 0.004 },
+  { x: 0.62, y: 0.09, w: 0.42, h: 0.02, v: 0.003 },
+  { x: 0.4, y: 0.3, w: 0.26, h: 0.012, v: 0.005 },
+  { x: 0.9, y: 0.36, w: 0.2, h: 0.01, v: 0.006 },
+];
+// Westernstadt am Horizont: x/w/h in Figurenhöhen relativ zur Bildmitte
+const TOWN = [
+  { t: 'mill', x: -1.15, w: 0.1, h: 0.5 },
+  { t: 'house', x: -0.9, w: 0.3, h: 0.15 },
+  { t: 'front', x: -0.58, w: 0.28, h: 0.24, win: 2 },
+  { t: 'front', x: -0.3, w: 0.22, h: 0.19, win: 1 },
+  { t: 'church', x: -0.06, w: 0.2, h: 0.2 },
+  { t: 'front', x: 0.22, w: 0.32, h: 0.27, win: 3 },
+  { t: 'house', x: 0.52, w: 0.22, h: 0.14, win: 1 },
+  { t: 'tower', x: 0.76, w: 0.16, h: 0.4 },
+  { t: 'house', x: 1.02, w: 0.26, h: 0.12 },
+];
+const PEBBLES = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), r: rand(0.6, 2.2) }));
+const TUFTS = Array.from({ length: 16 }, () => ({ x: Math.random(), y: Math.random(), a: Array.from({ length: 5 }, () => rand(-0.7, 0.7)) }));
+const MOTES = Array.from({ length: 26 }, () => ({ x: Math.random(), y: Math.random(), v: rand(0.3, 1), r: rand(0.6, 1.8) }));
+const TUMBLE_ARCS = Array.from({ length: 9 }, () => [rand(0, 6.28), rand(0.5, 1), rand(1.5, 3.5)]);
+
+function drawMesas(list, color, rimAlpha) {
+  const slope = L.fig * 0.25, hz = L.horizon;
+  for (const [a, b, h] of list) {
+    const top = hz - h * L.fig, x0 = a * W, x1 = b * W;
+    ctx.beginPath();
+    ctx.moveTo(x0, hz + 1); ctx.lineTo(x0 + slope, top); ctx.lineTo(x1 - slope, top); ctx.lineTo(x1, hz + 1);
+    ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+    // Gesteinsschichten
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(20,5,25,.22)'; ctx.lineWidth = 1;
+    const step = Math.max(4, h * L.fig * 0.13);
+    for (let yy = top + step * 0.7, k = 0; yy < hz; yy += step, k++) {
+      ctx.beginPath(); ctx.moveTo(x0, yy);
+      for (let xx = x0; xx <= x1; xx += 12) ctx.lineTo(xx, yy + Math.sin(xx * 0.05 + k) * 1.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Abendlicht auf Kante und sonnenzugewandter Flanke
+    const sunRight = (a + b) / 2 < 0.5;
+    ctx.strokeStyle = `rgba(255,170,100,${rimAlpha})`; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (sunRight) { ctx.moveTo(x0 + slope, top); ctx.lineTo(x1 - slope, top); ctx.lineTo(x1, hz); }
+    else { ctx.moveTo(x1 - slope, top); ctx.lineTo(x0 + slope, top); ctx.lineTo(x0, hz); }
+    ctx.stroke();
+  }
+}
+
+function drawTown(now) {
+  const hz = L.horizon + 1;
+  const u = Math.min(L.fig, H * 0.24), k = u * Math.min(1, (W * 0.55) / (2.5 * u));
+  const cx = W / 2, col = '#3a1432', lamp = '#ffcf7a';
+  ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'butt';
+  for (const b of TOWN) {
+    const x = cx + b.x * k, w = b.w * k, h = b.h * k;
+    ctx.fillStyle = col;
+    if (b.t === 'house') {
+      ctx.fillRect(x - w / 2, hz - h, w, h);
+      ctx.beginPath(); ctx.moveTo(x - w * 0.56, hz - h); ctx.lineTo(x, hz - h * 1.55); ctx.lineTo(x + w * 0.56, hz - h); ctx.fill();
+    } else if (b.t === 'front') {
+      ctx.fillRect(x - w / 2, hz - h, w, h);
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2, hz - h); ctx.lineTo(x - w / 2, hz - h * 1.25); ctx.lineTo(x - w * 0.2, hz - h * 1.25);
+      ctx.lineTo(x - w * 0.2, hz - h * 1.38); ctx.lineTo(x + w * 0.2, hz - h * 1.38); ctx.lineTo(x + w * 0.2, hz - h * 1.25);
+      ctx.lineTo(x + w / 2, hz - h * 1.25); ctx.lineTo(x + w / 2, hz - h); ctx.fill();
+      ctx.fillRect(x - w * 0.6, hz - h * 0.45, w * 1.2, Math.max(1, h * 0.05)); // Vordach
+    } else if (b.t === 'church') {
+      ctx.fillRect(x - w / 2, hz - h, w, h);
+      ctx.beginPath(); ctx.moveTo(x - w * 0.55, hz - h); ctx.lineTo(x, hz - h * 1.4); ctx.lineTo(x + w * 0.55, hz - h); ctx.fill();
+      ctx.fillRect(x - w * 0.12, hz - h * 1.9, w * 0.24, h * 0.6);
+      ctx.beginPath(); ctx.moveTo(x - w * 0.16, hz - h * 1.9); ctx.lineTo(x, hz - h * 2.35); ctx.lineTo(x + w * 0.16, hz - h * 1.9); ctx.fill();
+      ctx.lineWidth = Math.max(1, k * 0.008);
+      ctx.beginPath(); ctx.moveTo(x, hz - h * 2.35); ctx.lineTo(x, hz - h * 2.6); ctx.moveTo(x - w * 0.07, hz - h * 2.5); ctx.lineTo(x + w * 0.07, hz - h * 2.5); ctx.stroke();
+    } else if (b.t === 'tower') {
+      ctx.lineWidth = Math.max(1, k * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(x - w * 0.45, hz); ctx.lineTo(x - w * 0.3, hz - h * 0.6);
+      ctx.moveTo(x + w * 0.45, hz); ctx.lineTo(x + w * 0.3, hz - h * 0.6);
+      ctx.moveTo(x - w * 0.4, hz - h * 0.25); ctx.lineTo(x + w * 0.4, hz - h * 0.35);
+      ctx.moveTo(x + w * 0.4, hz - h * 0.25); ctx.lineTo(x - w * 0.4, hz - h * 0.35);
+      ctx.stroke();
+      ctx.fillRect(x - w / 2, hz - h * 0.88, w, h * 0.3);
+      ctx.beginPath(); ctx.moveTo(x - w * 0.56, hz - h * 0.88); ctx.lineTo(x, hz - h); ctx.lineTo(x + w * 0.56, hz - h * 0.88); ctx.fill();
+    } else if (b.t === 'mill') {
+      ctx.beginPath(); ctx.moveTo(x - w / 2, hz); ctx.lineTo(x - w * 0.1, hz - h * 0.85); ctx.lineTo(x + w * 0.1, hz - h * 0.85); ctx.lineTo(x + w / 2, hz); ctx.fill();
+      const hx = x, hy = hz - h * 0.88, r = h * 0.28, rot = now / 1400;
+      ctx.lineWidth = Math.max(1, k * 0.01);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const an = rot + i * Math.PI / 4;
+        ctx.moveTo(hx, hy); ctx.lineTo(hx + Math.cos(an) * r, hy + Math.sin(an) * r);
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + r * 0.9, hy - r * 0.1); ctx.lineTo(hx + r * 0.9, hy + r * 0.3); ctx.fill();
+    }
+    if (b.win) {
+      ctx.fillStyle = lamp;
+      const ww = Math.max(1, w * 0.1), wh = Math.max(1, h * 0.16);
+      for (let i = 0; i < b.win; i++) {
+        const wx = x - w / 2 + (w / (b.win + 1)) * (i + 1) - ww / 2;
+        ctx.fillRect(wx, hz - h * 0.8, ww, wh);
+      }
+    }
+  }
+  ctx.lineCap = 'round';
+}
+
+function drawClouds(now) {
+  const hz = L.horizon;
+  for (const c of CLOUDS) {
+    const cx = (((c.x + now / 1000 * c.v) % 1.6) + 1.6) % 1.6 - 0.3;
+    const cy = c.y * hz, hh = c.h * H;
+    const g = ctx.createLinearGradient(0, cy - hh * 1.6, 0, cy + hh * 1.4);
+    g.addColorStop(0, 'rgba(70,24,84,0)');
+    g.addColorStop(0.35, 'rgba(98,36,98,.75)');
+    g.addColorStop(1, 'rgba(255,150,105,.9)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const ex = (cx + (i / 5 - 0.5) * c.w) * W, ey = cy + Math.sin(i * 1.7 + c.x * 9) * hh * 0.5;
+      const rx = c.w * W * 0.2, ry = hh * (0.8 + 0.4 * Math.sin(i * 2.3 + c.y * 7));
+      ctx.moveTo(ex + rx, ey);
+      ctx.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+}
+
+function drawVultures(now) {
+  const hz = L.horizon, t0 = now / 1000;
+  ctx.strokeStyle = '#2a0f2a'; ctx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const t = t0 * 0.22 + i * 2.1;
+    const bx = W * (0.5 + 0.2 * Math.cos(t) * (1 + i * 0.2)), by = hz * (0.2 + 0.05 * Math.sin(t) + i * 0.05);
+    const span = L.fig * 0.09 * (1 - i * 0.15), flap = Math.sin(t0 * 2.6 + i * 1.3) * 0.3;
+    ctx.lineWidth = Math.max(1.2, span * 0.13);
+    ctx.beginPath();
+    ctx.moveTo(bx - span, by - span * (0.2 + flap));
+    ctx.quadraticCurveTo(bx - span * 0.45, by - span * 0.4, bx, by);
+    ctx.quadraticCurveTo(bx + span * 0.45, by - span * 0.4, bx + span, by - span * (0.2 + flap));
+    ctx.stroke();
+  }
+}
+
+function drawCactus(x, y, h) {
+  const w = h * 0.16, ld = x < W / 2 ? 1 : -1, d = Math.max(1, h * 0.02);
+  const rr = (x, y, w, h) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, w / 2); ctx.fill(); };
+  const shape = ox => {
+    rr(ox - w / 2, y - h, w, h);
+    rr(ox - w * 2.1, y - h * 0.62, w * 0.8, h * 0.32);
+    rr(ox - w * 2.1, y - h * 0.45, w * 1.8, w * 0.8);
+    rr(ox + w * 1.3, y - h * 0.78, w * 0.8, h * 0.3);
+    rr(ox + w * 0.3, y - h * 0.58, w * 1.8, w * 0.8);
+  };
+  ctx.fillStyle = 'rgba(255,160,95,.75)'; shape(x);
+  ctx.fillStyle = '#2a120c'; shape(x - ld * d);
+  // Rippen
+  ctx.strokeStyle = 'rgba(90,45,25,.55)'; ctx.lineWidth = Math.max(0.6, w * 0.06);
+  ctx.beginPath();
+  for (const f of [-0.22, 0.02, 0.26]) { ctx.moveTo(x - ld * d + w * f, y - h + w * 0.4); ctx.lineTo(x - ld * d + w * f, y - w * 0.2); }
+  ctx.stroke();
+}
+
+function drawSkull(x, y, sz) {
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#d9bf95'; ctx.lineWidth = sz * 0.11;
+  ctx.beginPath();
+  ctx.moveTo(x - sz * 0.25, y - sz * 0.58); ctx.quadraticCurveTo(x - sz * 0.72, y - sz * 0.6, x - sz * 0.78, y - sz * 0.95);
+  ctx.moveTo(x + sz * 0.25, y - sz * 0.58); ctx.quadraticCurveTo(x + sz * 0.72, y - sz * 0.6, x + sz * 0.78, y - sz * 0.95);
+  ctx.stroke();
+  const g = ctx.createLinearGradient(x - sz * 0.3, 0, x + sz * 0.3, 0);
+  g.addColorStop(0, '#f0dcb4'); g.addColorStop(1, '#b8946a');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(x - sz * 0.32, y - sz * 0.62); ctx.quadraticCurveTo(x, y - sz * 0.76, x + sz * 0.32, y - sz * 0.62);
+  ctx.lineTo(x + sz * 0.22, y - sz * 0.25); ctx.quadraticCurveTo(x + sz * 0.16, y, x, y);
+  ctx.quadraticCurveTo(x - sz * 0.16, y, x - sz * 0.22, y - sz * 0.25); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#3a1a0e';
+  ctx.beginPath();
+  ctx.ellipse(x - sz * 0.14, y - sz * 0.47, sz * 0.075, sz * 0.06, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(x + sz * 0.14, y - sz * 0.47, sz * 0.075, sz * 0.06, -0.3, 0, Math.PI * 2);
+  ctx.moveTo(x - sz * 0.03, y - sz * 0.08); ctx.ellipse(x - sz * 0.055, y - sz * 0.08, sz * 0.025, sz * 0.04, 0, 0, Math.PI * 2);
+  ctx.moveTo(x + sz * 0.08, y - sz * 0.08); ctx.ellipse(x + sz * 0.055, y - sz * 0.08, sz * 0.025, sz * 0.04, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(20,8,4,.3)';
+  ctx.beginPath(); ctx.ellipse(x, y + sz * 0.03, sz * 0.45, sz * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBackground(now) {
+  if (BG.img && BG.rect) {
+    const [bx, by, bw, bh] = BG.rect;
+    ctx.drawImage(BG.img, bx, by, bw, bh);
+    drawVultures(now);
+    return;
+  }
+  const hz = L.horizon;
+  // Himmel
+  const sky = ctx.createLinearGradient(0, 0, 0, hz);
+  sky.addColorStop(0, '#1d0b3a'); sky.addColorStop(0.45, '#6a1f5c');
+  sky.addColorStop(0.78, '#d9534f'); sky.addColorStop(1, '#f9b24e');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, hz + 1);
+  // ein paar späte Sterne
+  ctx.fillStyle = 'rgba(255,240,220,.5)';
+  for (let i = 0; i < 18; i++) {
+    const sx = ((i * 0.618) % 1) * W, sy = ((i * 0.37) % 1) * hz * 0.3;
+    ctx.globalAlpha = 0.25 + 0.25 * Math.sin(now / 700 + i);
+    ctx.fillRect(sx, sy, 1.2, 1.2);
+  }
+  ctx.globalAlpha = 1;
+  // Sonne, Strahlen, Glühen
+  const sr = Math.min(W, H) * 0.17, sx = W / 2, sy = hz - sr * 0.3;
+  ctx.save();
+  ctx.translate(sx, sy); ctx.rotate(now / 50000);
+  ctx.fillStyle = 'rgba(255,205,130,.045)';
+  const R = Math.max(W, H);
+  for (let i = 0; i < 14; i++) {
+    ctx.rotate(Math.PI * 2 / 14);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(R, -R * 0.07); ctx.lineTo(R, R * 0.07); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  const glow = ctx.createRadialGradient(sx, sy, sr * 0.6, sx, sy, sr * 3);
+  glow.addColorStop(0, 'rgba(255,214,120,.55)'); glow.addColorStop(1, 'rgba(255,214,120,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, hz);
+  drawClouds(now);
+  const sun = ctx.createRadialGradient(sx, sy - sr * 0.3, sr * 0.1, sx, sy, sr);
+  sun.addColorStop(0, '#fff6cf'); sun.addColorStop(1, '#ffc76a');
+  ctx.fillStyle = sun;
+  ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+  // Hitzeschlieren vor der Sonne
+  ctx.save();
+  ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = 'rgba(225,105,80,.28)';
+  for (const [o, t] of [[0.1, 0.04], [0.32, 0.07], [0.55, 0.1]]) {
+    ctx.fillRect(sx - sr, sy + sr * o + Math.sin(now / 900 + o * 10) * 1.5, sr * 2, sr * t);
+  }
+  ctx.restore();
+  drawVultures(now);
+  // Tafelberge & Stadt
+  drawMesas(FAR_MESAS, 'rgba(122,46,79,.85)', 0.35);
+  drawTown(now);
+  drawMesas(NEAR_MESAS, '#4a1a3a', 0.6);
+  // Boden
+  const gr = ctx.createLinearGradient(0, hz, 0, H);
+  gr.addColorStop(0, '#b5623a'); gr.addColorStop(0.35, '#7a3e22'); gr.addColorStop(1, '#2e140a');
+  ctx.fillStyle = gr; ctx.fillRect(0, hz, W, H - hz);
+  // Wagenspuren laufen zur Stadt
+  for (const [off, a] of [[-0.2, 0.3], [-0.12, 0.3], [0.12, 0.3], [0.2, 0.3]]) {
+    const bx = W / 2 + off * Math.max(W, H * 0.8), wpx = Math.max(2, W * 0.006);
+    ctx.fillStyle = `rgba(60,24,10,${a})`;
+    ctx.beginPath(); ctx.moveTo(W / 2 + off * W * 0.04, hz); ctx.lineTo(bx - wpx, H); ctx.lineTo(bx + wpx, H); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,190,130,.06)';
+  ctx.beginPath(); ctx.moveTo(W / 2, hz); ctx.lineTo(W / 2 - W * 0.09, H); ctx.lineTo(W / 2 + W * 0.09, H); ctx.closePath(); ctx.fill();
+  const haze = ctx.createLinearGradient(0, hz - 6, 0, hz + 14);
+  haze.addColorStop(0, 'rgba(255,200,130,0)'); haze.addColorStop(0.5, 'rgba(255,200,130,.35)'); haze.addColorStop(1, 'rgba(255,200,130,0)');
+  ctx.fillStyle = haze; ctx.fillRect(0, hz - 6, W, 20);
+  // Steine mit Lichtkante, Grasbüschel
+  for (const p of PEBBLES) {
+    const y = hz + (H - hz) * (0.05 + p.y * 0.95);
+    const k = 1 + ((y - hz) / (H - hz)) * 2, x = p.x * W, ld = x < W / 2 ? 1 : -1;
+    ctx.fillStyle = 'rgba(40,16,8,.5)';
+    ctx.beginPath(); ctx.ellipse(x, y, p.r * k, p.r * 0.55 * k, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,185,120,.35)';
+    ctx.beginPath(); ctx.ellipse(x + ld * p.r * k * 0.35, y - p.r * 0.25 * k, p.r * 0.45 * k, p.r * 0.2 * k, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(70,38,16,.8)'; ctx.lineCap = 'round';
+  for (const t of TUFTS) {
+    const y = hz + (H - hz) * (0.08 + t.y * 0.9), k = 1 + ((y - hz) / (H - hz)) * 2.5, x = t.x * W;
+    ctx.lineWidth = Math.max(0.8, 0.6 * k);
+    ctx.beginPath();
+    for (const a of t.a) { ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(a) * 6 * k, y - Math.cos(a) * 7 * k); }
+    ctx.stroke();
+  }
+  // Kakteen & Rinderschädel
+  for (const c of CACTI) {
+    const y = c.mid ? hz + L.fig * 0.08 : L.feet + L.fig * 0.25;
+    drawCactus(c.x * W, y, c.k * L.fig);
+  }
+  drawSkull(W * 0.6, L.feet + L.fig * 0.3, L.fig * 0.17);
+}
+
+function drawMotes(dt) {
+  ctx.fillStyle = 'rgba(246,211,160,.28)';
+  for (const m of MOTES) {
+    m.x += m.v * dt * 0.05; if (m.x > 1.02) m.x = -0.02;
+    const y = L.horizon * 0.6 + m.y * (H - L.horizon * 0.6) + Math.sin(performance.now() / 900 + m.v * 9) * 4;
+    ctx.beginPath(); ctx.arc(m.x * W, y, m.r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ---------- Revolverhelden ----------
+function newCowboy(dir, accent, hatScale, look) {
+  return {
+    dir, accent, hatScale: hatScale || 1, look: look || {},
+    draw: 0, drawTarget: 0, fall: 0, falling: false, landed: false, flash: 0,
+    sway: Math.random() * 10,
+    hat: { off: false, x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, rest: false },
+  };
+}
+
+// style: Cowboyhut (Standard), 'bowler' (Melone) oder 'flat' (flacher Spielerhut); band = Farbe des Hutbands
+function drawHat(g, k, style, band) {
+  g.save(); g.scale(k, k);
+  if (style === 'bowler') {
+    g.beginPath(); g.ellipse(0, 0, 12, 2.2, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(0, -0.5, 8, 9, 0, Math.PI, Math.PI * 2); g.fill();
+    if (band) { g.fillStyle = band; g.fillRect(-7.9, -2.8, 15.8, 1.5); }
+  } else if (style === 'flat') {
+    g.beginPath(); g.ellipse(0, 0, 20, 2.4, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(-8, 0); g.lineTo(-7.5, -7.5); g.lineTo(7.5, -7.5); g.lineTo(8, 0); g.closePath(); g.fill();
+    if (band) { g.fillStyle = band; g.fillRect(-7.9, -2.6, 15.8, 1.5); }
+  } else {
+    g.beginPath(); g.ellipse(0, 0, 17, 2.8, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath();
+    g.moveTo(-8, 0);
+    g.quadraticCurveTo(-9, -11, -4, -12);
+    g.quadraticCurveTo(0, -9.5, 4, -12);
+    g.quadraticCurveTo(9, -11, 8, 0);
+    g.closePath(); g.fill();
+    if (band) { g.fillStyle = band; g.beginPath(); g.moveTo(-8.2, -1.3); g.lineTo(8.2, -1.3); g.lineTo(8.5, -3); g.lineTo(-8.5, -3); g.closePath(); g.fill(); }
+  }
+  g.restore();
+}
+
+const DETAIL = 'rgba(130,80,50,.55)';
+const BRASS = '#c8963e';
+const GLINT = 'rgba(255,200,140,.6)';
+
+// Zeichnet eine Figur; Füße bei (x, y), fig = Höhe in Pixeln.
+// opt.mono: alles in einer Farbe (für die Lichtkante), opt.sil: eigene Silhouettenfarbe
+function drawCowboy(g, c, x, y, fig, now, opt = {}) {
+  const s = fig / 100, mono = opt.mono, detail = !mono, lk = c.look;
+  const C = col => mono || col;
+  g.save();
+  g.translate(x, y);
+  g.rotate(-c.dir * c.fall * c.fall * 1.45);
+  g.scale(s * c.dir, s);
+  g.scale(lk.w || 1, lk.h || 1);
+  let sil = mono || opt.sil;
+  if (!sil) { sil = g.createLinearGradient(0, -100, 0, 0); sil.addColorStop(0, '#2e1a11'); sil.addColorStop(1, '#120805'); }
+  const line = (pts, w = 0.7, col = DETAIL) => {
+    if (!detail) return;
+    g.strokeStyle = col; g.lineWidth = w;
+    g.beginPath(); g.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+    g.stroke();
+  };
+  const fill = () => { g.fillStyle = sil; g.strokeStyle = sil; };
+  const wind = Math.sin(now / 300 + c.sway) * (1 - c.fall);
+  fill(); g.lineCap = 'round'; g.lineJoin = 'round';
+
+  // lange Haare wehen hinter dem Rücken
+  if (lk.hair) {
+    g.beginPath();
+    g.moveTo(-1, -91);
+    g.quadraticCurveTo(-10, -88, -10, -76);
+    g.quadraticCurveTo(-14 + wind, -66, -21 + wind * 2.5, -61);
+    g.quadraticCurveTo(-11, -64, -3, -77);
+    g.closePath(); g.fill();
+    line([-4, -87, -9, -76, -16 + wind * 2, -64], 0.5);
+    line([-6, -84, -11, -72, -19 + wind * 2.3, -62], 0.5);
+  }
+
+  // Beine
+  g.beginPath();
+  g.moveTo(-9, -47); g.lineTo(-11.5, -24); g.lineTo(-12, -15); g.lineTo(-5.5, -15); g.lineTo(-4.5, -26);
+  g.lineTo(0, -38); g.lineTo(3.5, -26); g.lineTo(4, -15); g.lineTo(10.5, -15); g.lineTo(10.5, -26); g.lineTo(9, -47);
+  g.closePath(); g.fill();
+  line([-6, -44, -9.5, -17]); line([5.5, -44, 7.5, -17]);
+  // Stiefel mit Absatz und Sporen
+  const boot = (bx) => {
+    g.beginPath();
+    g.moveTo(bx - 0.5, -16); g.lineTo(bx + 7, -16); g.lineTo(bx + 6.8, -5); g.lineTo(bx + 10.5, -4);
+    g.lineTo(bx + 11.5, 0); g.lineTo(bx - 0.5, 0); g.closePath(); g.fill();
+    g.fillRect(bx - 1, -2.5, 3.5, 2.5);
+    // Sporn
+    g.lineWidth = 0.8; g.beginPath(); g.moveTo(bx - 0.5, -3.2); g.lineTo(bx - 3, -3.2); g.stroke();
+    g.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const r = i % 2 ? 1 : 2.6, an = i * Math.PI / 6 + now / 2000;
+      g.lineTo(bx - 3.6 + Math.cos(an) * r, -3.2 + Math.sin(an) * r);
+    }
+    g.closePath(); g.fill();
+    line([bx - 0.3, -15.3, bx + 6.9, -15.3], 0.6);
+    line([bx + 3, -14, bx + 3.2, -6.5], 0.4);
+  };
+  boot(-12); fill(); boot(3.5); fill();
+
+  // Oberkörper atmet leicht
+  g.translate(0, Math.sin(now / 600 + c.sway) * 0.6 * (1 - c.fall));
+  g.lineWidth = 6;
+  if (!lk.poncho) {
+    g.beginPath(); g.moveTo(-3, -73); g.lineTo(-8, -61); g.lineTo(-7, -49); g.stroke();
+    line([-9.6, -52, -5.4, -51.5], 0.6);
+  }
+  // Holster
+  g.beginPath(); g.moveTo(6, -50); g.lineTo(13, -50); g.lineTo(12.5, -34); g.lineTo(9.5, -30.5); g.lineTo(6.5, -34); g.closePath(); g.fill();
+  line([7.2, -48, 7.5, -35, 9.5, -32.2, 11.6, -35, 11.9, -48], 0.45);
+  // Patronengurt
+  fill(); g.fillRect(-10.5, -50.5, 22, 3.6);
+  if (detail && !lk.belly) {
+    g.fillStyle = BRASS;
+    for (let i = -9.5; i <= 3; i += 2.1) g.fillRect(i, -50, 1.1, 2.6);
+    fill();
+  }
+  if (lk.poncho) {
+    // Poncho mit Zickzack-Borte und Fransen
+    const pw = wind * 1.2;
+    g.beginPath(); g.moveTo(-6, -80); g.lineTo(8, -80); g.lineTo(18 + pw, -52); g.lineTo(-18 + pw, -52); g.closePath(); g.fill();
+    g.lineWidth = 0.6;
+    g.beginPath();
+    for (let i = -17; i <= 17; i += 1.4) { g.moveTo(i + pw, -52.5); g.lineTo(i + pw * 1.4, -49.5); }
+    g.stroke();
+    g.fillStyle = C(c.accent);
+    g.beginPath(); g.moveTo(-16.6 + pw, -56); g.lineTo(16.6 + pw, -56); g.lineTo(17.3 + pw, -54); g.lineTo(-17.3 + pw, -54); g.closePath(); g.fill();
+    g.fillStyle = C('#f2e6c8');
+    for (let i = -14; i <= 12; i += 4) {
+      g.beginPath(); g.moveTo(i + pw, -56); g.lineTo(i + 2 + pw, -59); g.lineTo(i + 4 + pw, -56); g.closePath(); g.fill();
+    }
+    line([-1, -79, -3 + pw * 0.5, -61], 0.5); line([5, -79, 9 + pw * 0.7, -61], 0.5);
+    fill();
+  } else {
+    // Staubmantel (bei Bauch kürzer)
+    const hem = lk.belly ? -40 : -31;
+    g.beginPath();
+    g.moveTo(-8, -78); g.lineTo(8, -78); g.lineTo(11, -50); g.lineTo(9, hem - 2);
+    g.lineTo(-4, hem); g.lineTo(-16, hem + 2); g.lineTo(-11, -52); g.closePath(); g.fill();
+    line([-1, -78, 2, -69, 6, -78], 0.6);            // Revers
+    line([5, -69, 8.5, -52, 8, hem - 1.5], 0.6);      // Mantelkante
+    line([-10, -52, -12.5, hem + 1.5], 0.6);          // Rückenschlitz
+    line([-1, -58, 4.5, -58.5], 0.6);                 // Taschenklappe
+    line([-7, -77, -9.5, -66], 0.5);                  // Falte
+  }
+  if (lk.belly) {
+    g.beginPath(); g.ellipse(6, -58, 14, 13, 0, 0, Math.PI * 2); g.fill();
+    line([3, -70, 10, -66, 15, -58, 15.5, -50], 0.6); // Westenkante
+    if (detail) {
+      g.fillStyle = BRASS;
+      for (const [bx, by] of [[11.5, -64.5], [14.3, -59], [15.3, -53.5]]) { g.beginPath(); g.arc(bx, by, 0.9, 0, Math.PI * 2); g.fill(); }
+      fill();
+    }
+  }
+  if (lk.ham) {
+    // Schinkenkeule in der Gesäßtasche
+    g.save(); g.translate(-13, -49); g.rotate(-2.2);
+    g.fillStyle = C('#c96a6f'); g.beginPath(); g.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2); g.fill();
+    if (detail) {
+      g.fillStyle = '#e9a0a3'; g.beginPath(); g.ellipse(-1.5, -1.6, 4.5, 1.6, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#8f3f45'; g.lineWidth = 0.5; g.beginPath(); g.arc(-1, 0.5, 3.5, 0.2, 2.6); g.stroke();
+    }
+    g.fillStyle = C('#f3e6d0'); g.fillRect(6, -1.3, 5, 2.6);
+    g.beginPath(); g.arc(11.5, -1.6, 1.7, 0, Math.PI * 2); g.arc(11.5, 1.6, 1.7, 0, Math.PI * 2); g.fill();
+    g.restore();
+    fill();
+  }
+  // Hals, Kopf, Nase, Kinn
+  g.fillRect(-1, -82, 6, 6);
+  g.beginPath(); g.arc(2, -85, 7, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.moveTo(8, -87); g.lineTo(11, -84); g.lineTo(8, -83); g.fill();
+  g.beginPath(); g.moveTo(4, -80); g.lineTo(8.5, -81.5); g.lineTo(8, -79); g.closePath(); g.fill();
+  line([-0.5, -86.5, 0.4, -84, -0.3, -82.8], 0.5);   // Ohr
+  if (lk.mustache) {
+    fill();
+    g.beginPath(); g.moveTo(5, -83);
+    g.quadraticCurveTo(10, -84, 13, -81); g.quadraticCurveTo(14, -77, 12, -76);
+    g.quadraticCurveTo(11, -80, 6, -80); g.closePath(); g.fill();
+    line([7, -82.5, 12, -80, 12.5, -77.5], 0.4);
+  }
+  // Halstuch (oder als Maske vor dem Gesicht) & Gürtelschnalle
+  g.fillStyle = C(c.accent);
+  g.beginPath();
+  if (lk.mask) { g.moveTo(-2, -85); g.lineTo(10.5, -85); g.lineTo(11, -81); g.lineTo(5, -75); g.lineTo(-3, -79); }
+  else { g.moveTo(-4, -79); g.lineTo(9, -79); g.lineTo(3, -71); }
+  g.closePath(); g.fill();
+  if (lk.mask) { line([1, -84, 4, -78.5], 0.45, 'rgba(0,0,0,.35)'); line([6, -84.5, 6.5, -78], 0.45, 'rgba(0,0,0,.35)'); }
+  else { line([0, -78.5, 3, -73], 0.45, 'rgba(0,0,0,.35)'); line([6, -78.5, 3.5, -73.5], 0.45, 'rgba(0,0,0,.35)'); }
+  g.fillStyle = C(BRASS);
+  if (lk.belly) g.fillRect(14, -51, 3, 3);
+  else g.fillRect(4, -50.4, 4, 3.2);
+  fill();
+  // Hut
+  if (!c.hat.off) {
+    g.save(); g.translate(1, -90); drawHat(g, c.hatScale, lk.hat, detail ? '#4e2e1c' : null); g.restore();
+    fill();
+  }
+  // Schussarm: vom Holster (unten) bis zur Waagerechten
+  const e = easeOut(Math.max(0, Math.min(1, c.draw)));
+  const a = lerp(1.35, -0.04, e);
+  const sx = 3, sy = -74, len = 28;
+  const hx = sx + Math.cos(a) * len, hy = sy + Math.sin(a) * len;
+  g.lineWidth = 6.5;
+  g.beginPath(); g.moveTo(sx, sy); g.lineTo(hx, hy); g.stroke();
+  line([sx + Math.cos(a) * 22 - Math.sin(a) * 3.2, sy + Math.sin(a) * 22 + Math.cos(a) * 3.2,
+        sx + Math.cos(a) * 22 + Math.sin(a) * 3.2, sy + Math.sin(a) * 22 - Math.cos(a) * 3.2], 0.6); // Ärmelaufschlag
+  g.save();
+  g.translate(hx, hy);
+  g.rotate(lerp(1.57, a, Math.min(1, e * 1.3)));
+  fill();
+  // Revolver: Griff, Rahmen mit Hahn, Trommel, Lauf, Abzugsbügel
+  g.save(); g.rotate(0.35);
+  g.beginPath(); g.moveTo(-3.2, -1); g.lineTo(1.6, -1); g.lineTo(1.2, 6); g.quadraticCurveTo(0, 9, -3.4, 8); g.closePath(); g.fill();
+  g.restore();
+  g.beginPath(); g.moveTo(-3, -3.2); g.lineTo(-4.8, -5.4); g.lineTo(-2.4, -4.9); g.lineTo(-0.5, -3.6); g.lineTo(5, -3.6); g.lineTo(5, 0.6); g.lineTo(-1.5, 0.8); g.closePath(); g.fill();
+  g.beginPath(); g.roundRect(-0.2, -4.4, 5.6, 4.6, 1.2); g.fill();
+  g.fillRect(5, -3.4, 12, 2.2); g.fillRect(5.2, -1.4, 8, 1.2); g.fillRect(15.8, -4.3, 1, 1.1);
+  g.lineWidth = 0.8; g.beginPath(); g.arc(1.8, 1.2, 1.9, 0, Math.PI); g.stroke();
+  line([5.5, -3.25, 16.5, -3.25], 0.45, GLINT);
+  line([1.1, -3.9, 1.1, -0.4], 0.4, GLINT); line([3.3, -3.9, 3.3, -0.4], 0.4, GLINT);
+  // Faust um den Griff
+  fill(); g.beginPath(); g.arc(-0.8, 1.6, 3.3, 0, Math.PI * 2); g.fill();
+  line([-2.5, 0, 0.8, -0.2], 0.45); line([-2.8, 2, 0.9, 1.8], 0.45);
+  if (c.flash > 0 && !mono) {
+    g.translate(17.5, -2.3);
+    g.fillStyle = '#fff3b0';
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 4 : 13, ang = (i / 10) * Math.PI * 2;
+      g.lineTo(Math.cos(ang) * r * 1.4, Math.sin(ang) * r * 0.8);
+    }
+    g.closePath(); g.fill();
+    g.fillStyle = '#ffb02e';
+    g.beginPath(); g.arc(2, 0, 4, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+  g.restore();
+}
+
+// Figur mit glühender Lichtkante auf der sonnenzugewandten Seite
+function drawLitCowboy(c, x, y, fig, now) {
+  const ld = x < W / 2 ? 1 : -1, d = Math.max(1, fig * 0.014);
+  drawCowboy(ctx, c, x, y, fig, now, { mono: RIM });
+  drawCowboy(ctx, c, x - ld * d, y + d * 0.4, fig, now);
+}
+
+// ---------- Gemalte Figuren ----------
+// Ein Bild pro Figur mit drei Posen nebeneinander (stehen, zielen, fallen), Blick nach rechts.
+const SPRITES = {};
+
+function sliceSheet(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const iw = c.width, ih = c.height, N = iw * ih, data = g.getImageData(0, 0, iw, ih).data;
+  // 1. Zusammenhängende Flächen finden (jede Pose ist eine Fläche, dazu Kleinteile wie ein fliegender Hut).
+  //    Nur kräftige Pixel zählen: der zarte Schimmer um die Figuren kann zwei Posen sonst verbinden
+  //    (z. B. Revolvermündung und Haare der Nachbarpose).
+  const SOLID = 64, solid = j => data[j * 4 + 3] > SOLID;
+  const lab = new Int32Array(N).fill(-1), stack = new Int32Array(N), comps = [];
+  for (let i = 0; i < N; i++) {
+    if (lab[i] !== -1 || !solid(i)) continue;
+    const cp = { id: comps.length, n: 0, sx: 0, sy: 0, cells: new Set() };
+    let sp = 0; stack[sp++] = i; lab[i] = cp.id;
+    while (sp) {
+      const j = stack[--sp], x = j % iw, y = (j / iw) | 0;
+      cp.n++; cp.sx += x; cp.sy += y; cp.cells.add((y >> 3) * 4096 + (x >> 3));
+      if (x > 0 && lab[j - 1] === -1 && solid(j - 1)) { lab[j - 1] = cp.id; stack[sp++] = j - 1; }
+      if (x < iw - 1 && lab[j + 1] === -1 && solid(j + 1)) { lab[j + 1] = cp.id; stack[sp++] = j + 1; }
+      if (y > 0 && lab[j - iw] === -1 && solid(j - iw)) { lab[j - iw] = cp.id; stack[sp++] = j - iw; }
+      if (y < ih - 1 && lab[j + iw] === -1 && solid(j + iw)) { lab[j + iw] = cp.id; stack[sp++] = j + iw; }
+    }
+    comps.push(cp);
+  }
+  //    Den Schimmer danach der Fläche zuordnen, die ihm am nächsten liegt (Ausbreitung von allen Flächen gleichzeitig)
+  let qh = 0, qt = 0;
+  for (let i = 0; i < N; i++) if (lab[i] !== -1) stack[qt++] = i;
+  while (qh < qt) {
+    const j = stack[qh++], x = j % iw, y = (j / iw) | 0, l = lab[j];
+    if (x > 0 && lab[j - 1] === -1 && data[(j - 1) * 4 + 3] > 8) { lab[j - 1] = l; stack[qt++] = j - 1; }
+    if (x < iw - 1 && lab[j + 1] === -1 && data[(j + 1) * 4 + 3] > 8) { lab[j + 1] = l; stack[qt++] = j + 1; }
+    if (y > 0 && lab[j - iw] === -1 && data[(j - iw) * 4 + 3] > 8) { lab[j - iw] = l; stack[qt++] = j - iw; }
+    if (y < ih - 1 && lab[j + iw] === -1 && data[(j + iw) * 4 + 3] > 8) { lab[j + iw] = l; stack[qt++] = j + iw; }
+  }
+  // 2. Die drei größten Flächen sind die Posen (von links nach rechts);
+  //    Kleinteile gehören zu der Pose, die ihnen am nächsten liegt – bevorzugt zu einer Pose, über oder unter
+  //    der sie liegen (ein fliegender Hut schwebt über der fallenden Pose, auch wenn der Revolver der
+  //    Zielpose näher an ihn heranreicht)
+  const poses = comps.slice().sort((a, b) => b.n - a.n).slice(0, 3).sort((a, b) => a.sx / a.n - b.sx / b.n);
+  if (poses.length < 3) throw new Error('Bild braucht drei Posen');
+  const owner = new Int8Array(comps.length).fill(-1);
+  poses.forEach((p, i) => { owner[p.id] = i; });
+  const cellLists = poses.map(p => [...p.cells].map(k => [k % 4096, Math.floor(k / 4096)]));
+  const spans = cellLists.map(cells => cells.reduce(([a, b], [x]) => [Math.min(a, x), Math.max(b, x)], [Infinity, -Infinity]));
+  for (const cp of comps) {
+    if (owner[cp.id] !== -1 || cp.n < 30) continue;
+    const cx = cp.sx / cp.n / 8, cy = cp.sy / cp.n / 8;
+    const above = spans.map(([a, b]) => cx >= a && cx <= b), any = above.includes(true);
+    let best = 0, bd = Infinity;
+    cellLists.forEach((cells, i) => {
+      if (any && !above[i]) return;
+      for (const [x, y] of cells) { const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; best = i; } }
+    });
+    owner[cp.id] = best;
+  }
+  // 3. Umrisse jeder Pose bestimmen
+  const box = poses.map(() => [iw, ih, -1, -1]);
+  for (let i = 0; i < N; i++) {
+    const l = lab[i];
+    if (l < 0 || owner[l] < 0) continue;
+    const b = box[owner[l]], x = i % iw, y = (i / iw) | 0;
+    if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y;
+  }
+  // 4. Jede Pose einzeln ausschneiden, ohne Teile der Nachbarposen
+  const frames = box.map(([x0, y0, x1, y1], pi) => {
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, out = new ImageData(w, h), od = out.data;
+    const footY = y1 - h * 0.06;
+    let fx = 0, fn = 0, mx = -1, my = 0, mn = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const i = y * iw + x, l = lab[i];
+        if (l < 0 || owner[l] !== pi) continue;
+        const s = i * 4, o = ((y - y0) * w + (x - x0)) * 4;
+        od[o] = data[s]; od[o + 1] = data[s + 1]; od[o + 2] = data[s + 2]; od[o + 3] = data[s + 3];
+        if (data[s + 3] <= 40) continue;
+        if (y >= footY) { fx += x; fn++; }               // Ankerpunkt = Mitte der Stiefel
+        if (x > mx) { mx = x; my = y; mn = 1; }          // rechtester Punkt = Revolvermündung
+        else if (x === mx) { my += y; mn++; }
+      }
+    }
+    return { cv: warmCanvas(out), w, h, ax: (fn ? fx / fn : (x0 + x1) / 2) - x0, mx: mx - x0, my: my / mn - y0 };
+  });
+  return { frames, muzzle: { x: frames[1].mx, y: frames[1].my } };
+}
+
+// Ausgeschnittene Pose auf eine eigene Leinwand, etwas wärmer und dunkler, damit sie ins Abendlicht passt
+function warmCanvas(imageData) {
+  const cv = document.createElement('canvas');
+  cv.width = imageData.width; cv.height = imageData.height;
+  const cg = cv.getContext('2d');
+  cg.putImageData(imageData, 0, 0);
+  cg.globalCompositeOperation = 'source-atop';
+  cg.fillStyle = 'rgba(110,35,10,.22)';
+  cg.fillRect(0, 0, cv.width, cv.height);
+  return cv;
+}
+
+// Siegerpose: ein Bild mit nur einer Figur (Hochformat, Blick nach rechts).
+// Höhe wird ab der Hutspitze gemessen, nicht ab der Rauchfahne über dem Revolver.
+function sliceSingle(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const iw = c.width, ih = c.height, data = g.getImageData(0, 0, iw, ih).data;
+  const a = (x, y) => data[(y * iw + x) * 4 + 3];
+  let x0 = iw, y0 = ih, x1 = -1, y1 = -1, sx0 = iw, sx1 = -1, sy1 = -1;
+  const rowSolid = new Int32Array(ih);
+  for (let y = 0; y < ih; y++) for (let x = 0; x < iw; x++) {
+    const al = a(x, y);
+    if (al > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (al > 64) { rowSolid[y]++; if (x < sx0) sx0 = x; if (x > sx1) sx1 = x; sy1 = y; }
+  }
+  // Hutspitze = oberste Zeile, die deutlich breiter ist als ein Rauchfaden
+  const minRow = (sx1 - sx0) * 0.1;
+  let top = 0; while (top < sy1 && rowSolid[top] < minRow) top++;
+  // Ankerpunkt = Mitte der Stiefel
+  let fx = 0, fn = 0;
+  for (let y = Math.round(sy1 - (sy1 - top) * 0.06); y <= sy1; y++)
+    for (let x = sx0; x <= sx1; x++) if (a(x, y) > 40) { fx += x; fn++; }
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  return { cv: warmCanvas(g.getImageData(x0, y0, w, h)), w, h, ax: (fn ? fx / fn : (x0 + x1) / 2) - x0, foot: sy1 - y0, sh: sy1 - top + 1 };
+}
+
+const SPRITE_FAILED = {};   // Bilder, die gar nicht laden – dann zeichnet das Spiel die Silhouette
+const sliceQueue = [];
+let slicing = false;
+
+function loadSprite(key, tries = 2, cut = sliceSheet) {
+  const img = new Image();
+  img.onload = () => { sliceQueue.push({ key, img, cut }); pumpSlices(); };
+  // abgebrochene Übertragung (z. B. wackliges WLAN): etwas später noch einmal versuchen
+  img.onerror = () => { if (tries > 0) setTimeout(() => loadSprite(key, tries - 1, cut), 1500); else SPRITE_FAILED[key] = true; };
+  img.src = `assets/${key}.webp`;
+}
+
+// Ausschneiden kostet pro Bild etwa 0,2 s: eins nach dem anderen, die gerade sichtbaren Figuren zuerst,
+// dazwischen läuft das Bild weiter
+let sliceFirst = null;   // Bild, das gerade am dringendsten gebraucht wird (Steckbrief)
+function pumpSlices() {
+  if (slicing || !sliceQueue.length) return;
+  slicing = true;
+  setTimeout(() => {
+    // zuerst das Bild für den offenen Steckbrief, dann die sichtbaren Figuren
+    const seen = cowboys.map(c => c.look.sprite);
+    let i = sliceQueue.findIndex(job => job.key === sliceFirst);
+    if (i < 0) i = sliceQueue.findIndex(job => seen.includes(job.key));
+    if (i < 0) i = 0;
+    const { key, img, cut } = sliceQueue.splice(i, 1)[0];
+    try { SPRITES[key] = cut(img); SPRITES[key].shown = performance.now(); } catch (e) { SPRITE_FAILED[key] = true; }
+    slicing = false;
+    pumpSlices();
+  }, 0);
+}
+
+const spriteOf = c => (c.look.sprite && SPRITES[c.look.sprite]) || null;
+// Bild noch nicht fertig: Figur vorerst gar nicht zeichnen (statt der Silhouette)
+const spriteWaiting = c => !!c.look.sprite && !SPRITES[c.look.sprite] && !SPRITE_FAILED[c.look.sprite];
+const spriteScale = (c, sp) => (L.fig * (c.look.h || 1) * 0.98) / sp.frames[0].h;
+
+function drawSpriteCowboy(c, x, y, now) {
+  const sp = spriteOf(c), k = spriteScale(c, sp);
+  const f = c.falling ? sp.frames[2] : (c.draw > 0.45 ? sp.frames[1] : sp.frames[0]);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, Math.max(0, (now - sp.shown) / 300));   // frisch geladen: sanft einblenden
+  ctx.translate(x, y);
+  if (c.falling) {
+    const e = easeOut(c.fall);
+    ctx.translate(-c.dir * L.fig * 0.25 * e, 0);
+    ctx.rotate(-c.dir * e * 0.85);
+  } else {
+    ctx.scale(1, 1 + Math.sin(now / 600 + c.sway) * 0.006);
+  }
+  // Siegerpose (nur Spielerfiguren): gleich hoch wie die stehende Pose, Hutspitze bis Stiefel
+  const v = c.cheer && !c.falling && SPRITES[c.look.sprite + '-sieg'];
+  if (v) {
+    const kv = k * sp.frames[0].h / v.sh;
+    ctx.scale(c.dir * kv, kv);
+    ctx.drawImage(v.cv, -v.ax, -v.foot);
+    ctx.restore();
+    return;
+  }
+  ctx.scale(c.dir * k, k);
+  ctx.drawImage(f.cv, -f.ax, -f.h);
+  if (c.flash > 0 && f === sp.frames[1]) {
+    ctx.translate(sp.muzzle.x - f.ax + 4 / k, sp.muzzle.y - f.h);
+    const r = 14 / k * (L.fig / 100);
+    ctx.fillStyle = '#fff3b0';
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const rr = i % 2 ? r * 0.3 : r, an = (i / 10) * Math.PI * 2;
+      ctx.lineTo(Math.cos(an) * rr * 1.4 + r * 0.6, Math.sin(an) * rr * 0.8);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Weltposition der Revolvermündung von Figur i (für Leuchtspur und Rauch)
+function muzzlePos(i) {
+  const c = cowboys[i], sp = spriteOf(c), s = L.fig / 100;
+  if (!sp) return [L.x[i] + c.dir * s * 50, L.feet - 75 * s];
+  const k = spriteScale(c, sp), f = sp.frames[1];
+  return [L.x[i] + c.dir * k * (sp.muzzle.x - f.ax), L.feet - k * (f.h - sp.muzzle.y)];
+}
+
+// Startmelodie zuerst laden (vor den Bildern), damit sie online beim ersten Tippen schon da ist
+Snd.loadClip('startmelodie', 0.12);   // Startmelodie (Pixabay Content License: kaazoom „Buckeye Burnout“)
+OPPONENTS.forEach(o => o.look && o.look.sprite && loadSprite(o.look.sprite));
+// Jubelrufe zur Siegerpose (Pixabay Content License: tygger281 „Yeehaw“, LazyChillZone „woman saying yeehaw 2“)
+Snd.loadClip('yeehaw-mann');
+Snd.loadClip('yeehaw-frau');
+Snd.loadClip('schuss', 0.13);         // Revolverschuss (Pixabay Content License: freesound_community / morganpurkis „Single Pistol Gunshot 3.3“)
+Snd.loadClip('gameover', 0.1);        // Totenglocke bei verlorenem Duell (Pixabay Content License: Stickypix7996 „Bell Toll“)
+Snd.loadClip('finale', 0.1);          // Siegesfanfare, wenn alle acht Banditen besiegt sind (Pixabay Content License: Emand_Edroff „Victory Bell Success Fanfare“)
+// weitere Aufnahmen (vom Nutzer ausgesucht, Lizenzen von ihm geprüft)
+Snd.loadClip('yeehaw-clint');          // eigener Jubelruf von Clover Clint
+Snd.loadClip('yeehaw-molly');          // eigener Jubelruf von Minty Molly
+Snd.loadClip('zieh', 0.12);            // Glocke bei „ZIEH!“
+Snd.loadClip('hahn', 0.05, 0.7);       // Hahn spannen bei „Bereit …“ (nur der erste Klick)
+Snd.loadClip('foul', 0.08);            // Frühstart
+Snd.loadClip('aufprall', 0.1);         // Getroffener landet im Staub
+Snd.loadClip('kasse', 0.08);           // Registrierkasse am Ende des Hochzählens
+Snd.loadClip('schrei', 0.28, 1.1);     // Killer Kate schreit beim „ZIEH!“ (gekürzt)
+Snd.loadClip('husten', 0.2, 0.8);      // Terrible Ted hustet beim „ZIEH!“ (nur der erste Hustenanfall)
+Snd.loadClip('klick', 0.14, 0.07);     // leises Klicken beim Hochzählen des Kontostands (Pixabay Content License: MilanWulf „Click Button“)
+Snd.loadClip('wind', 0.03);            // Wüstenwind während des Duells (Endlosschleife)
+[0, 1].forEach(i => FIGS.forEach(f => {
+  loadSprite(playerSprite(i, f));
+  loadSprite(playerSprite(i, f) + '-sieg', 2, sliceSingle);   // Siegerpose, z. B. spieler-gelb-frau-sieg.png
+}));
+{
+  const im = new Image();
+  im.onload = () => { BG.img = im; resize(); };
+  im.src = 'assets/hintergrund.webp';
+}
+
+let cowboys = [seatCowboy(0), newCowboy(-1, '#555', 1.1)];
+
+function knockHat(c, i) {
+  const s = L.fig / 100;
+  Object.assign(c.hat, {
+    off: true, rest: false,
+    x: L.x[i] + c.dir * s, y: L.feet - 90 * s * (c.look.h || 1), rot: 0,
+    vx: -c.dir * L.fig * rand(0.8, 1.4), vy: -L.fig * rand(2.2, 3), vr: -c.dir * rand(6, 10),
+  });
+}
+
+// ---------- Partikel & Effekte ----------
+let parts = [];
+let tumble = null;
+let tracer = null;
+let shake = 0, flash = 0;
+
+function puff(x, y, n, color, spread, up) {
+  for (let i = 0; i < n; i++) {
+    const life = rand(0.6, 1.3);
+    parts.push({ x, y, vx: rand(-spread, spread), vy: -rand(0, up), r: rand(2, 5) * L.fig / 100, grow: rand(8, 16) * L.fig / 100, life, max: life, color });
+  }
+}
+
+function spawnTumbleweed() {
+  const fromLeft = Math.random() < 0.5;
+  tumble = {
+    x: fromLeft ? -L.fig * 0.3 : W + L.fig * 0.3,
+    vx: (fromLeft ? 1 : -1) * W * rand(0.18, 0.3),
+    rot: 0, r: L.fig * 0.11, ph: 0,
+  };
+}
+
+// ---------- Spielzustand ----------
+const G = {
+  mode: null,        // 'solo' | 'duo'
+  state: 'menu',     // menu | ready | wait | draw | result | over | paused
+  opp: 0, round: 1, score: [0, 0], target: 2,
+  signalAt: 0, botAt: Infinity, botFoulAt: Infinity,
+  fastest: [null, null], fouls: [0, 0],
+  banner: null,
+  events: [],
+};
+
+function later(ms, fn) { G.events.push({ at: performance.now() + ms, fn }); }
+function clearEvents() { G.events = []; }
+function setBanner(b) { G.banner = Object.assign({ t0: performance.now(), color: '#fbe7c0' }, b); }
+
+function resetCowboy(c) {
+  Object.assign(c, { draw: 0, drawTarget: 0, fall: 0, falling: false, landed: false, flash: 0, cheer: false });
+  Object.assign(c.hat, { off: false, rest: false });
+}
+
+function startMatch() {
+  hidePanels();
+  Snd.init();
+  Snd.stopMusic();
+  G.score = [0, 0]; G.round = 1; G.fastest = [null, null]; G.fouls = [0, 0];
+  G.target = 2;   // Best-of-Three, auch zu zweit
+  const o = OPPONENTS[G.opp];
+  cowboys = [
+    seatCowboy(0),
+    G.mode === 'solo' ? newCowboy(-1, o.accent, o.hat, o.look) : seatCowboy(1),
+  ];
+  parts = []; tumble = null;
+  $('#btnBack').classList.remove('hidden');
+  Snd.windStart();
+  startRound();
+}
+
+function startRound() {
+  clearEvents();
+  cowboys.forEach(resetCowboy);
+  G.state = 'ready';
+  G.botAt = Infinity; G.botFoulAt = Infinity;
+  const first = G.round === 1 && G.mode === 'solo';
+  setBanner({ text: `Runde ${G.round}`, sub: first ? `gegen ${OPPONENTS[G.opp].name}` : 'Hände an die Colts …', pop: true });
+  // Rundenanzeige bleibt 2,5 s stehen (Nutzerwunsch: 1,2 s länger als früher)
+  later(2500, () => {
+    G.state = 'wait';
+    Snd.cock();
+    setBanner({ text: 'Bereit …', pulse: true });
+    const d = rand(1500, 4500), now = performance.now();
+    G.signalAt = now + d;
+    if (G.mode === 'solo' && Math.random() < OPPONENTS[G.opp].foul) G.botFoulAt = now + rand(400, d - 150);
+    if (Math.random() < 0.5) spawnTumbleweed();
+  });
+}
+
+function signal() {
+  G.state = 'draw';
+  Snd.bell();
+  flash = 0.18;
+  setBanner({ text: 'ZIEH!', big: true, pop: true, color: '#ffd23f' });
+  if (G.mode === 'solo') {
+    // Reaktionszeit: eigener Bereich (range, in ms), sonst Grundwert × Zufallsfaktor 0,88 … 1,18
+    const o = OPPONENTS[G.opp];
+    G.botAt = G.signalAt + (o.range ? rand(o.range[0], o.range[1]) : o.react * rand(0.88, 1.18));
+    if (o.voice) Snd.sayStart(o.voice);   // Kate schreit, Ted hustet – bevor sie schießen
+  }
+}
+
+// Spieler p tippt zum Zeitpunkt t
+function tap(p, t) {
+  if (G.state === 'wait' || (G.state === 'draw' && t < G.signalAt)) return resolve(1 - p, null, p);
+  if (G.state !== 'draw') return;
+  if (G.mode === 'solo' && t >= G.botAt) return resolve(1, Math.round(G.botAt - G.signalAt));
+  resolve(p, Math.max(0, Math.round(t - G.signalAt)));
+}
+
+// w gewinnt die Runde; ms = Reaktionszeit, foulBy = wer zu früh war
+function resolve(w, ms, foulBy = null) {
+  const l = 1 - w;
+  G.state = 'result';
+  G.score[w]++;
+  if (foulBy != null) G.fouls[foulBy]++;
+  cowboys[w].drawTarget = 1;
+  cowboys[l].drawTarget = foulBy === l ? 1 : 0.35;
+  if (ms != null && (G.fastest[w] == null || ms < G.fastest[w])) G.fastest[w] = ms;
+  if (G.mode === 'solo' && w === 0 && ms != null) {
+    const best = store.get('best', null);
+    if (best == null || ms < best) store.set('best', ms);
+  }
+
+  const name = OPPONENTS[G.opp].name;
+  if (G.mode === 'solo') {
+    // Foul: immer dazuschreiben, wer es begangen hat
+    if (foulBy === 0) setBanner({ text: 'ZU FRÜH!', sub: `Foul von ${seatName(0)}`, color: '#ff6b4a', pop: true });
+    else if (foulBy === 1) setBanner({ text: 'ZU FRÜH!', sub: `Foul von ${name}`, color: '#ffd23f', pop: true });
+    else if (w === 0) setBanner({ text: 'TREFFER!', sub: `${ms} ms`, color: '#ffd23f', pop: true });
+    else setBanner({ text: 'ZU LANGSAM!', sub: `${name}: ${ms} ms`, color: '#ff6b4a', pop: true });
+  } else {
+    if (foulBy != null) setBanner({ text: 'ZU FRÜH!', sub: `Foul von ${seatName(foulBy)}`, color: seatColor(w).ui, pop: true });
+    else setBanner({ text: `${seatName(w).toUpperCase()} TRIFFT!`, sub: `${ms} ms`, color: seatColor(w).ui, pop: true });
+  }
+
+  let delay = 110;
+  if (foulBy != null) { Snd.buzz(); delay = 420; }
+  later(delay, () => fire(w));
+  later(delay + 1800, nextRound);
+}
+
+function fire(w) {
+  const l = 1 - w, a = cowboys[w], b = cowboys[l], s = L.fig / 100;
+  a.drawTarget = 1; a.draw = Math.max(a.draw, 0.9);
+  a.flash = 0.08;
+  Snd.shot();
+  try { navigator.vibrate && navigator.vibrate(70); } catch (e) {}
+  shake = L.fig * 0.12; flash = Math.max(flash, 0.3);
+  const [gx, gy] = muzzlePos(w);
+  tracer = { x1: gx, y1: gy, x2: L.x[l], y2: L.feet - 65 * s, until: performance.now() + 70 };
+  puff(gx, gy, 6, '200,190,180', L.fig * 0.15, L.fig * 0.5);
+  b.falling = true;
+  if (!spriteOf(b)) knockHat(b, l);
+  if (G.mode === 'solo' && l === 1) Snd.sayStop();   // getroffener Bandit verstummt
+  // wenn der Gegner im Staub liegt: Siegerpose, und menschliche Spieler rufen „Yeehaw!“
+  later(750, () => {
+    a.cheer = true;
+    // Clover Clint hat einen eigenen Ruf, die anderen teilen sich Frauen- bzw. Männerstimme
+    // Grün hat eigene Rufe (Clint, Molly), Gelb die beiden Pixabay-Rufe (Yale, Sue)
+    const s = seat(w), ruf = PLAYERS[s.c].key === 'gruen' ? (s.f === 'mann' ? 'yeehaw-clint' : 'yeehaw-molly') : `yeehaw-${s.f}`;
+    if (G.mode === 'duo' || w === 0) Snd.clip(ruf);
+  });
+}
+
+// Nach jeder Runde gut eine Sekunde den Zwischenstand zeigen (z. B. „1 : 1“), dann weiter
+function nextRound() {
+  const [a, b] = G.score, n0 = seatName(0), n1 = G.mode === 'solo' ? OPPONENTS[G.opp].name : seatName(1);
+  // im 2-Spieler-Modus sieht der Spieler oben (gedrehte Schrift) seinen eigenen Stand zuerst
+  setBanner({ text: `${a} : ${b}`, sub: `${n0} – ${n1}`, textRot: `${b} : ${a}`, subRot: `${n1} – ${n0}`, pop: true });
+  later(1100, () => {
+    if (a >= G.target || b >= G.target) return endMatch();
+    G.round++;
+    startRound();
+  });
+}
+
+function endMatch() {
+  G.state = 'over';
+  G.banner = null;
+  Snd.windStop();
+  const won = G.score[0] > G.score[1];
+  // kein Treffer: wer zu früh gezogen hat, liest „zu schnell“, wer gar nicht geschossen hat, „kein Schuss“
+  const fmt = (ms, i) => ms != null ? `${ms} ms` : G.fouls[i] ? 'zu schnell' : 'kein Schuss';
+  const r = { kicker: '', title: '', text: '', stats: '', act: 'retry', label: 'Revanche' };
+
+  if (G.mode === 'solo') {
+    const o = OPPONENTS[G.opp];
+    // verloren: Totenglocke (Aufnahme; lädt sie nicht, bleibt es still); gewonnen: das „Yeehaw“ der Siegerpose reicht
+    if (!won) Snd.clip('gameover', 0.25);
+    if (won) {
+      store.set('ladder', Math.max(store.get('ladder', 0), G.opp + 1));
+      // Belohnung aufs Konto (jeder Sieg zahlt, auch gegen schon besiegte Banditen)
+      const before = store.get('kasse', 0);
+      r.purse = [before, before + o.reward, o.reward];
+      store.set('kasse', before + o.reward);
+      const last = G.opp === OPPONENTS.length - 1;
+      if (last) {
+        const total = OPPONENTS.reduce((s, x) => s + x.reward, 0);
+        later(1200, () => Snd.clip('finale', 0.2));   // alle acht besiegt: Siegesfanfare (nach dem „Yeehaw“)
+        Object.assign(r, { kicker: `Alle ${OPPONENTS.length} erledigt`, title: 'Legende des Westens!',
+          text: `Kein Bandit ist übrig. Gesamtbelohnung: $${total.toLocaleString('de-DE')}.`,
+          act: 'restart', label: 'Nochmal von vorn' });
+      } else {
+        Object.assign(r, { kicker: `Gegner ${G.opp + 1} von ${OPPONENTS.length}`, title: 'Gewonnen!',
+          text: `${o.name} liegt im Staub. Belohnung: $${o.reward.toLocaleString('de-DE')}.`,
+          act: 'next', label: 'Nächster Gegner' });
+      }
+    } else {
+      Object.assign(r, { kicker: `Gegner ${G.opp + 1} von ${OPPONENTS.length}`, title: 'Du liegst im Staub.',
+        text: `${o.name} war schneller.`, act: 'retry', label: 'Revanche' });
+    }
+    r.stats = `Dein schnellster Schuss: <b>${fmt(G.fastest[0], 0)}</b>`;
+  } else {
+    const w = won ? 0 : 1;
+    Object.assign(r, { kicker: `${G.score[0]} : ${G.score[1]}`,
+      title: `${seatName(w)} gewinnt!`,
+      text: `${seatName(1 - w)} muss heute die Runde im Saloon zahlen.` });
+    r.stats = [0, 1].map(i => `Schnellster Schuss ${seatName(i)}: <b>${fmt(G.fastest[i], i)}</b>`).join('<br>');
+  }
+
+  later(600, () => {
+    $('#rKicker').textContent = r.kicker;
+    $('#rTitle').textContent = r.title;
+    $('#rText').textContent = r.text;
+    $('#rStats').innerHTML = r.stats;
+    const btn = $('#rMain'); btn.textContent = r.label; btn.dataset.act = r.act;
+    $('#rPurse').classList.toggle('hidden', !r.purse);
+    showPanel('result');
+    if (r.purse) countPurse(...r.purse);
+  });
+}
+
+// Kontostand vom alten auf den neuen Betrag hochzählen (mit Klicken und „Ka-Tsching“ am Ende)
+function countPurse(from, to, add) {
+  const sum = $('#rPurseSum'), plus = $('#rPurseAdd'), panel = $('#result');
+  sum.textContent = money(from); sum.classList.remove('pop');
+  plus.textContent = `+ ${money(add)}`; plus.classList.remove('show');
+  const dur = Math.min(2200, 900 + Math.log10(add + 1) * 350);
+  let t0 = null, lastTick = 0;
+  const step = now => {
+    if (panel.classList.contains('hidden')) return;   // Plakat schon weggetippt
+    if (t0 === null) { t0 = now; plus.classList.add('show'); }
+    const k = Math.min(1, (now - t0) / dur);
+    sum.textContent = money(Math.round(from + (to - from) * easeOut(k)));
+    if (k < 1) {
+      if (now - lastTick > 75) { Snd.tick(); lastTick = now; }
+      requestAnimationFrame(step);
+    } else {
+      sum.classList.add('pop');
+      Snd.kaching();
+    }
+  };
+  setTimeout(() => requestAnimationFrame(step), 450);
+}
+
+function toMenu() {
+  clearEvents();
+  G.state = 'menu'; G.banner = null;
+  Snd.windStop();
+  showMenuCowboys(false, true);
+  $('#btnBack').classList.add('hidden');
+  updateRecords();
+  showPanel('menu');
+}
+
+// ---------- Oberfläche ----------
+// Zum Testen: index.html#gegner=3 startet direkt beim dritten Banditen
+const START_OPP = Math.min(OPPONENTS.length, Math.max(1, parseInt((location.hash.match(/gegner=(\d+)/) || [])[1], 10) || 1)) - 1;
+
+const PANELS = ['menu', 'wanted', 'duoIntro', 'result'];
+function hidePanels() { PANELS.forEach(id => $('#' + id).classList.add('hidden')); $('#copy').classList.add('hidden'); }
+function showPanel(id) {
+  hidePanels();
+  const el = $('#' + id);
+  el.classList.remove('hidden');
+  $('#copy').classList.remove('hidden');   // Urheberhinweis nur bei Menü und Plakaten
+  // Einblend-Animation neu starten – auch die der Kinder (sonst bleibt z. B. „ZIEH!“ nach der Rückkehr ins Menü stehen)
+  const restart = [el, ...el.querySelectorAll('.rules, .zieh')];
+  restart.forEach(n => { n.style.animation = 'none'; });
+  void el.offsetWidth;
+  restart.forEach(n => { n.style.animation = ''; });
+  if (id !== 'menu') $('#btnBack').classList.remove('hidden');
+}
+
+function updateRecords() {
+  const best = store.get('best', null), ladder = store.get('ladder', 0);
+  const cells = [];
+  if (best != null) cells.push(['Bester Schuss', `${best} ms`]);
+  if (ladder > 0) cells.push(['Banditen', `${ladder}/${OPPONENTS.length}`]);
+  const kasse = store.get('kasse', 0);
+  if (kasse > 0) cells.push(['Kontostand', money(kasse)]);
+  const box = $('#records');
+  box.replaceChildren(...cells.map(([label, value]) => {
+    const d = document.createElement('div'), s = document.createElement('small'), b = document.createElement('b');
+    d.className = 'rec'; s.textContent = label; b.textContent = value;
+    d.append(s, b);
+    return d;
+  }));
+  $('#btnReset').classList.toggle('hidden', !cells.length);
+}
+
+// „Auf 0 setzen“: erst nachfragen (zweimal tippen), dann Rekorde und Kontostand löschen; die Figurwahl bleibt
+const btnReset = $('#btnReset');
+let resetTimer = null;
+btnReset.addEventListener('click', () => {
+  if (!btnReset.classList.contains('confirm')) {
+    btnReset.classList.add('confirm');
+    btnReset.textContent = 'Wirklich alles auf 0? Nochmal tippen';
+    resetTimer = setTimeout(() => { btnReset.classList.remove('confirm'); btnReset.textContent = 'Auf 0 setzen'; }, 4000);
+    return;
+  }
+  clearTimeout(resetTimer);
+  store.set('best', null); store.set('ladder', 0); store.set('kasse', 0);
+  btnReset.classList.remove('confirm'); btnReset.textContent = 'Auf 0 setzen';
+  updateRecords();
+});
+
+function showWanted() {
+  const o = OPPONENTS[G.opp];
+  $('#wName').textContent = o.name;
+  $('#wDesc').textContent = o.desc;
+  $('#wReward').textContent = `$${o.reward.toLocaleString('de-DE')} Belohnung`;
+  $('#wStep').textContent = `Gegner ${G.opp + 1} von ${OPPONENTS.length}`;
+  sliceFirst = o.look && o.look.sprite;
+  drawPortrait(o);
+  showPanel('wanted');
+}
+
+// Porträt im Steckbrief. Ist das gemalte Bild noch nicht ausgeschnitten (online beim ersten Aufruf),
+// bleibt der Rahmen leer und wird nachgezeichnet, sobald es fertig ist; Silhouette nur, wenn es gar nicht lädt.
+function drawPortrait(o) {
+  const pc = $('#portrait'), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  pc.width = 200 * dpr; pc.height = 150 * dpr;
+  const g = pc.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = '#c9a86a'; g.fillRect(0, 0, 200, 150);
+  const vg = g.createRadialGradient(100, 75, 20, 100, 75, 120);
+  vg.addColorStop(0, 'rgba(255,240,200,.35)'); vg.addColorStop(1, 'rgba(90,58,30,.45)');
+  g.fillStyle = vg; g.fillRect(0, 0, 200, 150);
+  const sp = o.look && o.look.sprite && SPRITES[o.look.sprite];
+  if (sp) {
+    const f = sp.frames[0], k = 230 / f.w;
+    g.save(); g.translate(100, 8); g.scale(-k, k);
+    g.drawImage(f.cv, -f.w / 2, 0);
+    g.restore();
+    g.globalCompositeOperation = 'color';
+    g.fillStyle = '#8a6a40'; g.fillRect(0, 0, 200, 150);
+    g.globalCompositeOperation = 'source-over';
+  } else if (!o.look || !o.look.sprite || SPRITE_FAILED[o.look.sprite]) {
+    drawCowboy(g, newCowboy(-1, o.accent, o.hat, o.look), 112, 400, 400, 0, { sil: '#3a2414' });
+  } else {
+    setTimeout(() => { if (OPPONENTS[G.opp] === o && !$('#wanted').classList.contains('hidden')) drawPortrait(o); }, 150);
+  }
+}
+
+// Figurwahl: vier Knöpfe je Platz (Menü: Platz 0; 2 Spieler: unten = 0, oben = 1).
+// Groß der Name, klein darunter Revolverheldin/Revolverheld; die Figur des anderen Platzes ist gesperrt.
+document.querySelectorAll('.pick4[data-seat]').forEach(row => {
+  for (const key of ALL_FIGS) {
+    const { c, f } = parseFig(key), b = document.createElement('button');
+    b.dataset.pick = key;
+    b.textContent = PLAYERS[c].names[f];
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = f === 'frau' ? 'Revolverheldin' : 'Revolverheld';
+    b.appendChild(nm);
+    row.appendChild(b);
+  }
+});
+function syncPicks() {
+  document.querySelectorAll('.pick4[data-seat]').forEach(row => {
+    const i = +row.dataset.seat, duo = !!row.closest('#duoIntro');
+    row.querySelectorAll('[data-pick]').forEach(b => {
+      const on = b.dataset.pick === seatKeys[i];
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      b.disabled = duo && b.dataset.pick === seatKeys[1 - i];
+    });
+  });
+}
+// Menü: links die eigene Figur, rechts ein zufälliger Bandit (alle Bilder sind ohnehin geladen).
+// newGuest = neu auslosen, sonst bleibt der Bandit beim Umschalten der eigenen Figur stehen.
+let menuGuest = null;
+function showMenuCowboys(duo, newGuest = false) {
+  if (newGuest || !menuGuest) menuGuest = OPPONENTS[Math.floor(Math.random() * OPPONENTS.length)];
+  const o = menuGuest;
+  cowboys = [seatCowboy(0), duo ? seatCowboy(1) : newCowboy(-1, o.accent, o.hat, o.look)];
+}
+showMenuCowboys(false, true);
+syncPicks();
+
+document.addEventListener('click', e => {
+  const pb = e.target.closest('[data-pick]');
+  if (pb) {
+    setSeat(+pb.closest('[data-seat]').dataset.seat, pb.dataset.pick);
+    syncPicks();
+    if (G.state === 'menu') showMenuCowboys(!$('#duoIntro').classList.contains('hidden'));
+    return;
+  }
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  Snd.init();
+  switch (btn.dataset.act) {
+    case 'solo': G.mode = 'solo'; G.opp = START_OPP; showWanted(); break;
+    case 'duo': showMenuCowboys(true); showPanel('duoIntro'); break;
+    case 'duoGo': G.mode = 'duo'; startMatch(); break;
+    case 'fight': startMatch(); break;
+    case 'next': G.opp++; showWanted(); break;
+    case 'retry': G.mode === 'solo' ? showWanted() : startMatch(); break;
+    case 'restart': G.opp = 0; showWanted(); break;
+    case 'menu': toMenu(); break;
+  }
+});
+
+$('#btnBack').addEventListener('click', toMenu);
+const btnSound = $('#btnSound');
+const syncSoundBtn = () => { btnSound.textContent = Snd.on ? '🔊' : '🔇'; };
+btnSound.addEventListener('click', () => { Snd.init(); Snd.set(!Snd.on); syncSoundBtn(); });
+syncSoundBtn();
+
+// ---------- Eingabe ----------
+const eventTime = e => {
+  const now = performance.now();
+  return (e.timeStamp && Math.abs(now - e.timeStamp) < 1000) ? e.timeStamp : now;
+};
+
+cvs.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  Snd.init();
+  if (!G.mode || ['menu', 'over'].includes(G.state)) return;
+  const p = G.mode === 'duo' ? (e.clientY < window.innerHeight / 2 ? 1 : 0) : 0;
+  tap(p, eventTime(e));
+});
+
+window.addEventListener('keydown', e => {
+  if (e.repeat || !G.mode || ['menu', 'over'].includes(G.state)) return;
+  const k = e.key.toLowerCase();
+  let p = null;
+  if (G.mode === 'solo') { if (k === ' ' || k === 'enter') p = 0; }
+  else if (k === 'a' || k === ' ') p = 0;
+  else if (k === 'l' || k === 'enter') p = 1;
+  if (p === null) return;
+  e.preventDefault();
+  tap(p, eventTime(e));
+});
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Wer die App verlässt, bekommt die Runde neu gestartet
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (['ready', 'wait', 'draw'].includes(G.state)) { clearEvents(); G.state = 'paused'; }
+  } else if (G.state === 'paused') {
+    startRound();
+  }
+});
+
+// ---------- Text auf der Leinwand ----------
+// underline: Strich unter dem Text (kennzeichnet menschliche Spieler im Duell)
+function text(str, x, y, size, color, { rot = false, maxW = W * 0.9, alpha = 1, scale = 1, underline = false } = {}) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(Math.PI);
+  ctx.globalAlpha = alpha;
+  ctx.font = `${size}px ${FONT}`;
+  const w = ctx.measureText(str).width;
+  const k = scale * Math.min(1, maxW / w);
+  ctx.scale(k, k);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = Math.max(3, size * 0.12); ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(20,8,4,.85)';
+  if (underline) {
+    // Unterstrich mit dunklem Rand wie die Schrift
+    const uy = size * 0.55, uh = Math.max(2, size * 0.09);
+    ctx.fillStyle = 'rgba(20,8,4,.85)';
+    ctx.fillRect(-w / 2 - 2, uy - 2, w + 4, uh + 4);
+    ctx.fillStyle = color;
+    ctx.fillRect(-w / 2, uy, w, uh);
+  }
+  ctx.strokeText(str, 0, 0);
+  ctx.fillStyle = color;
+  ctx.fillText(str, 0, 0);
+  ctx.restore();
+}
+
+function drawBanner(now) {
+  const b = G.banner;
+  if (!b) return;
+  const age = now - b.t0;
+  const pop = b.pop ? 1 + 0.5 * Math.pow(Math.max(0, 1 - age / 180), 2) : 1;
+  const size = Math.min(W, H) * (b.big ? 0.22 : 0.12);
+  const alpha = b.pulse ? 0.55 + 0.45 * Math.sin(age / 250) : 1;
+  const spots = G.mode === 'duo'
+    ? [[W / 2, H * 0.8, false], [W / 2, H * 0.2, true]]
+    : [[W / 2, L.bannerY, false]];
+  for (const [x, y, rot] of spots) {
+    // gedrehte Fassung (Spieler oben) darf einen eigenen Text haben, z. B. den Spielstand aus seiner Sicht
+    const t = rot && b.textRot != null ? b.textRot : b.text, sub = rot && b.subRot != null ? b.subRot : b.sub;
+    if (t) text(t, x, y, size, b.color, { rot, scale: pop, alpha });
+    if (sub) text(sub, x, y + (t ? (rot ? -1 : 1) * size * 0.85 : 0), size * 0.42, '#fbe7c0', { rot, alpha });
+  }
+}
+
+function drawPips(x, y, score, target, color, rot) {
+  const gap = 18;
+  for (let i = 0; i < target; i++) {
+    const off = (i - (target - 1) / 2) * gap * (rot ? -1 : 1);
+    ctx.beginPath(); ctx.arc(x + off, y, 6, 0, Math.PI * 2);
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(20,8,4,.8)';
+    ctx.fillStyle = i < score ? color : 'rgba(20,8,4,.35)';
+    ctx.fill(); ctx.stroke();
+  }
+}
+
+function drawHud() {
+  if (G.state === 'gallery') {
+    G.galleryNames.forEach((n, i) => text(n, L.x[i], L.feet - L.fig * 1.18, 26, '#fbe7c0', { maxW: W * 0.4 }));
+    return;
+  }
+  if (!G.mode || G.state === 'menu') return;
+  if (G.mode === 'solo') {
+    const y = safeTop + 76;
+    text(seatName(0), L.x[0], y, 20, '#fbe7c0', { maxW: W * 0.36, underline: true });
+    text(OPPONENTS[G.opp].name, L.x[1], y, 20, '#fbe7c0', { maxW: W * 0.36 });
+    drawPips(L.x[0], y + 24, G.score[0], G.target, '#ffd23f');
+    drawPips(L.x[1], y + 24, G.score[1], G.target, '#ffd23f');
+  } else {
+    // Farbige Tippzonen
+    const zh = H * 0.16;
+    let g = ctx.createLinearGradient(0, H, 0, H - zh);
+    // Tippzonen in der Farbe der jeweiligen Figur, darüber die Namen
+    const p0 = seatColor(0), p1 = seatColor(1), n0 = seatName(0).toUpperCase(), n1 = seatName(1).toUpperCase();
+    g.addColorStop(0, `rgba(${p0.rgb},.45)`); g.addColorStop(1, `rgba(${p0.rgb},0)`);
+    ctx.fillStyle = g; ctx.fillRect(0, H - zh, W, zh);
+    g = ctx.createLinearGradient(0, 0, 0, zh);
+    g.addColorStop(0, `rgba(${p1.rgb},.45)`); g.addColorStop(1, `rgba(${p1.rgb},0)`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, zh);
+    const yb = H - safeBottom - 44, yt = safeTop + 76, mw = W * 0.4;
+    text(n0, L.x[0], yb, 18, p0.ui, { underline: true, maxW: mw });
+    text(n1, L.x[1], yb, 18, p1.ui, { underline: true, maxW: mw });
+    drawPips(L.x[0], yb + 22, G.score[0], G.target, p0.ui);
+    drawPips(L.x[1], yb + 22, G.score[1], G.target, p1.ui);
+    text(n0, L.x[0], yt, 18, p0.ui, { rot: true, underline: true, maxW: mw });
+    text(n1, L.x[1], yt, 18, p1.ui, { rot: true, underline: true, maxW: mw });
+    drawPips(L.x[0], yt - 22, G.score[0], G.target, p0.ui, true);
+    drawPips(L.x[1], yt - 22, G.score[1], G.target, p1.ui, true);
+  }
+}
+
+// ---------- Spielschleife ----------
+function update(now, dt) {
+  // geplante Ereignisse
+  if (G.events.length) {
+    const due = G.events.filter(ev => ev.at <= now);
+    G.events = G.events.filter(ev => ev.at > now);
+    due.forEach(ev => ev.fn());
+  }
+  if (G.state === 'wait') {
+    if (now >= G.botFoulAt) { cowboys[1].drawTarget = 1; resolve(0, null, 1); }
+    else if (now >= G.signalAt) signal();
+  } else if (G.state === 'draw' && G.mode === 'solo' && now >= G.botAt) {
+    resolve(1, Math.round(G.botAt - G.signalAt));
+  }
+
+  cowboys.forEach((c, i) => {
+    if (G.state === 'wait') c.drawTarget = 0.05 + 0.03 * Math.sin(now / 140 + c.sway);
+    c.draw += (c.drawTarget - c.draw) * Math.min(1, dt * 22);
+    c.flash = Math.max(0, c.flash - dt);
+    if (c.falling && c.fall < 1) {
+      c.fall = Math.min(1, c.fall + dt * 2.2);
+      if (c.fall >= 1 && !c.landed) {
+        c.landed = true;
+        Snd.thud();
+        puff(L.x[i] - c.dir * L.fig * 0.6, L.feet, 12, '150,95,60', L.fig * 0.5, L.fig * 0.3);
+        shake = Math.max(shake, L.fig * 0.04);
+      }
+    }
+    const h = c.hat;
+    if (h.off && !h.rest) {
+      h.vy += L.fig * 10 * dt;
+      h.x += h.vx * dt; h.y += h.vy * dt; h.rot += h.vr * dt;
+      if (h.y >= L.feet - 2 && h.vy > 0) { h.y = L.feet - 2; h.rest = true; }
+    }
+  });
+
+  if (G.state === 'menu' && !tumble && Math.random() < dt * 0.12) spawnTumbleweed();
+  if (tumble) {
+    tumble.x += tumble.vx * dt;
+    tumble.rot += tumble.vx * dt / tumble.r;
+    tumble.ph += dt * 5;
+    if (tumble.x < -L.fig || tumble.x > W + L.fig) tumble = null;
+  }
+
+  for (const p of parts) {
+    p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= Math.exp(-dt * 2); p.vy *= Math.exp(-dt * 2);
+    p.r += p.grow * dt;
+  }
+  parts = parts.filter(p => p.life > 0);
+
+  shake *= Math.exp(-dt * 10);
+  flash = Math.max(0, flash - dt * 2.5);
+}
+
+function render(now, dt) {
+  const t = turnWanted();
+  if (t !== TURN) { TURN = t; resize(); }
+  sceneTransform();
+  ctx.save();
+  if (shake > 0.3) ctx.translate(rand(-shake, shake), rand(-shake, shake));
+  drawBackground(now);
+  drawMotes(dt);
+
+  // Schatten
+  cowboys.forEach((c, i) => {
+    if (spriteWaiting(c)) return;
+    ctx.fillStyle = 'rgba(20,8,4,.35)';
+    ctx.beginPath();
+    ctx.ellipse(L.x[i] - c.dir * c.fall * L.fig * 0.4, L.feet, L.fig * (0.16 + 0.32 * c.fall), L.fig * 0.035, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  cowboys.forEach((c, i) => {
+    if (spriteWaiting(c)) return;
+    spriteOf(c) ? drawSpriteCowboy(c, L.x[i], L.feet, now) : drawLitCowboy(c, L.x[i], L.feet, L.fig, now);
+  });
+
+  // weggeschossene Hüte
+  const s = L.fig / 100;
+  cowboys.forEach(c => {
+    if (!c.hat.off) return;
+    const d = Math.max(1, L.fig * 0.014);
+    for (const [col, ox] of [[RIM, 0], [SIL, (c.hat.x < W / 2 ? -d : d)]]) {
+      ctx.fillStyle = col;
+      ctx.save(); ctx.translate(c.hat.x + ox, c.hat.y + (ox ? d * 0.4 : 0)); ctx.rotate(c.hat.rot); ctx.scale(s * c.dir, s);
+      drawHat(ctx, c.hatScale, c.look.hat);
+      ctx.restore();
+    }
+  });
+
+  if (tumble) {
+    const y = L.feet + L.fig * 0.12 - tumble.r - Math.abs(Math.sin(tumble.ph)) * L.fig * 0.15;
+    ctx.save(); ctx.translate(tumble.x, y); ctx.rotate(tumble.rot);
+    ctx.strokeStyle = '#6b4423'; ctx.lineWidth = 1.5;
+    for (const [a0, k, len] of TUMBLE_ARCS) {
+      ctx.beginPath(); ctx.arc(0, 0, tumble.r * k, a0, a0 + len); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  if (tracer && now < tracer.until) {
+    ctx.strokeStyle = 'rgba(255,240,200,.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(tracer.x1, tracer.y1); ctx.lineTo(tracer.x2, tracer.y2); ctx.stroke();
+  }
+
+  for (const p of parts) {
+    ctx.fillStyle = `rgba(${p.color},${(p.life / p.max) * 0.5})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // Vignette
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,3,15,.55)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+  if (flash > 0) { ctx.fillStyle = `rgba(255,248,230,${flash})`; ctx.fillRect(0, 0, W, H); }
+
+  // Filmkorn
+  if (!grainPat) grainPat = ctx.createPattern(GRAIN, 'repeat');
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 0.16; ctx.globalCompositeOperation = 'overlay';
+  ctx.translate(-Math.random() * 160, -Math.random() * 160);
+  ctx.fillStyle = grainPat; ctx.fillRect(0, 0, cvs.width + 160, cvs.height + 160);
+  ctx.restore();
+  sceneTransform();
+
+  // 2 Spieler quer: Texte und Tippzonen bleiben im Hochformat (unten/oben)
+  if (TURN === -1) { useSpace(VIEW); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+  drawHud();
+  drawBanner(now);
+  if (TURN === 1 && G.round === 1 && G.state === 'ready') drawTurnHint(now);
+  if (TURN === -1) useSpace(SCENE);
+  showLoading(now, cowboys.some(spriteWaiting));
+}
+
+// Hinweis in der ersten Runde: Handy quer halten (mit gebogenem Pfeil)
+function drawTurnHint(now) {
+  const y = H - Math.max(28, H * 0.09), a = 0.65 + 0.35 * Math.sin(now / 220);
+  text('↺  Handy quer halten', W / 2, y, Math.min(W, H) * 0.06, '#fbe7c0', { alpha: a });
+}
+
+// Ladehinweis erst nach 0,4 s Wartezeit zeigen (sonst blitzt er bei schnellem Laden kurz auf)
+let loadingSince = null, loadingOn = false;
+function showLoading(now, waiting) {
+  if (!waiting) loadingSince = null;
+  else if (loadingSince == null) loadingSince = now;
+  const on = waiting && now - loadingSince > 400;
+  if (on !== loadingOn) { loadingOn = on; $('#loading').classList.toggle('on', on); }
+}
+
+const GRAIN = document.createElement('canvas');
+GRAIN.width = GRAIN.height = 160;
+{
+  const gg = GRAIN.getContext('2d'), id = gg.createImageData(160, 160);
+  for (let i = 0; i < id.data.length; i += 4) {
+    const v = Math.random() * 255 | 0;
+    id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255;
+  }
+  gg.putImageData(id, 0, 0);
+}
+let grainPat = null;
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  update(now, dt);
+  render(now, dt);
+  requestAnimationFrame(frame);
+}
+
+updateRecords();
+
+// Western-Startmelodie beim Aufruf, pro Aufruf genau einmal. Blockiert der Browser Töne,
+// erklingt sie beim ersten Tippen – außer dieses Tippen schaltet den Ton stumm.
+let welcomed = false;
+const playWelcome = () => {
+  if (welcomed) return;
+  welcomed = true;
+  if (Snd.on) Snd.western();
+};
+if (!GALLERY) {
+  Snd.init();
+  if (Snd.ac && Snd.ac.state === 'running') playWelcome();
+  else {
+    const unlockEvents = ['pointerdown', 'keydown', 'touchstart'];
+    const unlock = e => {
+      unlockEvents.forEach(t => window.removeEventListener(t, unlock, true));
+      if (e.target && e.target.closest && e.target.closest('#btnSound')) { welcomed = true; return; }
+      Snd.init();
+      playWelcome();
+    };
+    unlockEvents.forEach(t => window.addEventListener(t, unlock, true));
+  }
+}
+
+// Service Worker (sw.js): Spiel im Handy ablegen, damit es auch ohne Internet startet
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
+if (GALLERY) {
+  const a = OPPONENTS[2], b = OPPONENTS[7];
+  hidePanels();
+  G.state = 'gallery';
+  G.galleryNames = [a.name, b.name];
+  cowboys = [newCowboy(1, a.accent, a.hat, a.look), newCowboy(-1, b.accent, b.hat, b.look)];
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
