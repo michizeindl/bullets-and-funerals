@@ -1,0 +1,171 @@
+// Service Worker: legt das Spiel beim ersten Aufruf im Handy ab, damit es danach auch ohne Internet läuft.
+// Strategie „erst Netz, dann Ablage“: mit Internet immer der neueste Stand, ohne Internet die abgelegte Fassung.
+// Kommen Dateien dazu, hier in DATEIEN eintragen und VERSION hochzählen.
+const VERSION = 'bf-19';
+const DATEIEN = [
+  './',
+  'index.html',
+  'manifest.webmanifest',
+  'assets/rye.woff2',
+  'assets/favicon.png',
+  'assets/apple-touch-icon.png',
+  'assets/icon-192.png',
+  'assets/icon-512.png',
+  'assets/hintergrund.webp',
+  'assets/lazy-larry.webp',
+  'assets/clumsy-clyde.webp',
+  'assets/bacon-bob.webp',
+  'assets/greasy-gus.webp',
+  'assets/crazy-cora.webp',
+  'assets/smokin-sally.webp',
+  'assets/terrible-ted.webp',
+  'assets/killer-kate.webp',
+  'assets/furious-francis.webp',
+  'assets/hintergrund-train.webp',
+  'assets/plakat-train.webp',
+  'assets/plakat-desert.webp',
+  'assets/karte-west.webp',
+  'assets/karte-west-quer.webp',
+  'assets/zug-lok.webp',
+  'assets/zug-gueterwagen-rot.webp',
+  'assets/zug-gueterwagen-holz.webp',
+  'assets/zug-flachwagen.webp',
+  'assets/zug-bremswagen.webp',
+  'assets/sooty-sid.webp',
+  'assets/ticket-tilly.webp',
+  'assets/iron-isaac.webp',
+  'assets/hand-gelb-mann.webp',
+  'assets/hand-gelb-frau.webp',
+  'assets/hand-gruen-mann.webp',
+  'assets/hand-gruen-frau.webp',
+  'assets/zug-rattern.mp3',
+  'assets/zug-pfiff.mp3',
+  'assets/dampf.mp3',
+  'assets/querschlaeger.mp3',
+  'assets/holz-treffer.mp3',
+  'assets/hund.webp',
+  'assets/katze.webp',
+  'assets/spieler-gelb-frau.webp',
+  'assets/spieler-gelb-mann.webp',
+  'assets/spieler-gruen-frau.webp',
+  'assets/spieler-gruen-mann.webp',
+  'assets/spieler-gelb-frau-sieg.webp',
+  'assets/spieler-gelb-mann-sieg.webp',
+  'assets/spieler-gruen-frau-sieg.webp',
+  'assets/spieler-gruen-mann-sieg.webp',
+  'assets/startmelodie.mp3',
+  'assets/schuss.mp3',
+  'assets/zieh.mp3',
+  'assets/hahn.mp3',
+  'assets/foul.mp3',
+  'assets/aufprall.mp3',
+  'assets/kasse.mp3',
+  'assets/klick.mp3',
+  'assets/wind.mp3',
+  'assets/gameover.mp3',
+  'assets/finale.mp3',
+  'assets/schrei.mp3',
+  'assets/husten.mp3',
+  'assets/yeehaw-mann.mp3',
+  'assets/yeehaw-frau.mp3',
+  'assets/yeehaw-clint.mp3',
+  'assets/yeehaw-molly.mp3',
+  'assets/zug-bremse.mp3',
+  'assets/zug-vorbei.mp3',
+  'assets/hintergrund-cemetery.webp',
+  'assets/plakat-cemetery.webp',
+  'assets/hintergrund-cemetery-quer.webp',
+  'assets/grabsteine.webp',
+  'assets/grabsteine-2.webp',
+  'assets/grim-gideon.webp',
+  'assets/weeping-wanda.webp',
+  'assets/mournful-mortimer.webp',
+  'assets/regen.mp3',
+  'assets/donner-nah.mp3',
+  'assets/donner-fern.mp3',
+  'assets/kraehe.mp3',
+  'assets/tor.mp3',
+  'assets/eule.mp3',
+  'assets/hintergrund-saloon.webp',
+  'assets/plakat-saloon.webp',
+  'assets/hintergrund-gang.webp',
+  'assets/plakat-canyon.webp',
+  'assets/hintergrund-gang-quer.webp',
+  'assets/bumble-bruder.webp',
+  'assets/big-boss-bumble.webp',
+  'assets/voegel.mp3',
+  'assets/hahnenschrei.mp3',
+  'assets/uff.mp3',
+  'assets/gelaechter.mp3',
+  'assets/hintergrund-clocktower.webp',
+  'assets/plakat-clocktower.webp',
+  'assets/hintergrund-clocktower-quer.webp',
+  'assets/reverend-rufus.webp',
+  'assets/mayor-moneybags.webp',
+  'assets/sheriff-sledge.webp',
+  'assets/glocke.mp3',
+  'assets/ticken.mp3',
+  'assets/stadt.mp3',
+  'assets/pferd.mp3',
+  'assets/hintergrund-forest.webp',
+  'assets/plakat-forest.webp',
+  'assets/woody-wade.webp',
+  'assets/mabel-moss.webp',
+  'assets/possum-pete.webp',
+  'assets/hickory-hank.webp',
+  'assets/beaver-bonnie.webp',
+  'assets/moose-morgan.webp',
+  'assets/lumber-lou.webp',
+  'assets/silent-silas.webp',
+  'assets/grizzly-gordon.webp',
+  'assets/wurfgegenstaende.webp',
+  'assets/wald.mp3',
+  'assets/wurf-langsam.mp3',
+  'assets/wurf-schnell.mp3',
+  'assets/glas-zerspringt.mp3',
+  'assets/metall-scheppert.mp3',
+  'assets/holz-splittert.mp3',
+  'assets/specht.mp3',
+  'assets/hintergrund-saloon-quer.webp',
+  'assets/hintergrund-train-quer.webp',
+  'assets/joker-jack-1.webp',
+  'assets/joker-jack-2.webp',
+  'assets/queen-quinn-1.webp',
+  'assets/queen-quinn-2.webp',
+  'assets/king-kasimir-1.webp',
+  'assets/king-kasimir-2.webp',
+  'assets/stimmen.mp3',
+  'assets/karten-mischen.mp3',
+  'assets/karten-flip.mp3',
+  'assets/glas.mp3',
+  'assets/faecher.mp3',
+  'assets/chips.mp3',
+  'assets/saloon-musik.mp3',
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(DATEIEN)).then(() => self.skipWaiting()));
+});
+
+// alte Ablagen früherer Versionen wegräumen
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys()
+    .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+    .then(() => self.clients.claim()));
+});
+
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // Videos nicht anfassen: der Browser lädt sie stückweise (Range-Anfragen), das klappt direkt am besten (iPhone)
+  if (url.pathname.endsWith('.mp4')) return;
+  e.respondWith(
+    fetch(req)
+      .then(res => {
+        if (res.ok && !req.headers.has('range')) { const kopie = res.clone(); caches.open(VERSION).then(c => c.put(req, kopie)); }
+        return res;
+      })
+      .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
+  );
+});
